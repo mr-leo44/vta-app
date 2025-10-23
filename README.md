@@ -1,61 +1,136 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# VTA API
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+Petit service API pour gérer la production VTA, l'authentification par username/password (Sanctum), et la gestion des rôles/permissions via Spatie.
 
-## About Laravel
+Ce README décrit :
+- comment fonctionne l'auth (endpoints),
+- comment Spatie est intégré,
+- comment générer la documentation API avec Dedoc Scramble,
+- spécifications d'export Excel (rapport mensuel/annuel) à implémenter.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Endpoints d'authentification
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+- POST /api/login
+  - body: { "username": "...", "password": "..." }
+  - retourne : user (sans password) et token Sanctum
+- POST /api/logout
+  - protégé par `auth:sanctum` ; révoque le token courant
+- GET /api/user
+  - protégé par `auth:sanctum` ; retourne l'utilisateur authentifié
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+Les réponses sont formatées via le helper `App\Helpers\ApiResponse`.
 
-## Learning Laravel
+## Architecture & Clean Code
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+- Repositories (ex: `App\Repositories\UserRepositoryInterface` + `EloquentUserRepository`)
+- Services (ex: `App\Services\AuthServiceInterface` + `AuthService`)
+- FormRequests (ex: `App\Http\Requests\LoginRequest`)
+- Controllers (ex: `App\Http\Controllers\Api\AuthController`)
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+Ces couches respectent SOLID et facilitent les tests.
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## Rôles & Permissions (Spatie)
 
-## Laravel Sponsors
+Le projet utilise `spatie/laravel-permission` pour gérer les rôles et permissions.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+- Le package est listé dans `composer.json`.
+- Le modèle `App\Models\User` utilise déjà le trait `HasRoles`.
 
-### Premium Partners
+Installation (si pas déjà fait) :
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
+```bash
+composer require spatie/laravel-permission
+php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider"
+php artisan migrate
+```
 
-## Contributing
+Exemples :
 
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
+```php
+$user->assignRole('admin');
+$user->givePermissionTo('export reports');
+```
 
-## Code of Conduct
+Seule la role `admin` pourra réinitialiser les mots de passe (flux à implémenter côté admin).
 
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
+## Documentation API — Dedoc Scramble
 
-## Security Vulnerabilities
+Ce projet utilise Dedoc Scramble (`dedoc/scramble`) pour générer la documentation à partir de fichiers Markdown et annotations dans le code.
 
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
+Workflow recommandé :
 
-## License
+1. Installer le package (si nécessaire) :
 
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+```bash
+composer require --dev dedoc/scramble
+```
+
+2. Placer des fichiers de documentation Markdown dans `docs/` ou annoter les contrôleurs et FormRequests.
+
+3. Commande pour générer la documentation statique :
+
+```bash
+php artisan scramble:render
+# ou selon la configuration du package
+```
+
+4. Le rendu peut être exposé sous `public/docs` ou maintenu dans `docs/`.
+
+Comment annoter un contrôleur / FormRequest :
+
+- Dans un contrôleur, ajouter une courte description au-dessus de la méthode et un exemple de request/response en Markdown.
+- Dans un `FormRequest`, ajouter les règles et décrire les champs.
+
+Exemple rapide pour `/api/login` (contrôleur) :
+
+```php
+/**
+ * Log in a user by username/password.
+ *
+ * Request example:
+ * {
+ *   "username": "jdoe",
+ *   "password": "secret"
+ * }
+ *
+ * Response 200:
+ * {
+ *   "success": true,
+ *   "data": { "user": {...}, "token": "..." }
+ * }
+ */
+public function login(LoginRequest $request) { ... }
+```
+
+Je peux enrichir automatiquement ces fichiers si tu veux (j'ai préparé des fichiers `docs/` initiaux pour auth, permissions et exports).
+
+## Exports Excel (spécs)
+
+L'application devra fournir des exports Excel/CSV pour les rapports de production. Voici la spécification proposée :
+
+- Rapport mensuel : colonnes (date, shift, operator_id, production_count, defects_count, downtime_minutes, remarks)
+- Rapport annuel : agrégation mensuelle, totaux, et éventuellement plusieurs feuilles dans le classeur (par ligne/atelier)
+
+Recommandations d'implémentation :
+
+- Utiliser `maatwebsite/excel` pour générer XLSX/CSV.
+- Pour gros volumes, générer via queue (jobs) et stockage sur `storage/app/exports`.
+- Endpoint pour lancer l'export (POST /api/exports/production) qui retourne 202 + job id, et endpoint pour récupérer le fichier fini.
+
+## Tests
+
+- Tests unitaires pour `AuthService` existent (happy path, bad credentials, logout). Exécuter via :
+
+```bash
+vendor/bin/pest
+```
+
+## To do / prochaines étapes
+
+- Ajouter endpoints admin pour gestion des rôles et reset de mot de passe (admin only).
+- Implémenter exports Excel avec `maatwebsite/excel` (classe d'export, job, endpoint).
+- Générer documentation Scramble et la publier (public/docs).
+
+Si tu veux, j'exécute maintenant :
+- générer la doc Scramble et la placer dans `public/docs`,
+- ou installer `maatwebsite/excel` et créer une première classe d'export minimal.

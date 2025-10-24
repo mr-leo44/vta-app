@@ -63,7 +63,7 @@ class OperatorController extends Controller
     public function destroy(Operator $operator)
     {
         $this->service->delete($operator);
-        return ApiResponse::success(null, 'Operator deleted successfully');
+        return response()->noContent();
     }
 
     /**
@@ -74,6 +74,7 @@ class OperatorController extends Controller
     public function search(Request $request)
     {
         $term = $request->get('term');
+        // dd($term);
         $operator = $this->service->findByNameOrIata($term);
         return $operator
             ? new OperatorResource($operator)

@@ -66,21 +66,17 @@ class OperatorController extends Controller
         return ApiResponse::success(null, 'Operator deleted successfully');
     }
 
-        /**
+    /**
      * Find operator by name or IATA code.
      *
      * @queryParam term string required The search term (operator name or IATA code). Example: CAA
      */
-    public function find(Request $request)
+    public function search(Request $request)
     {
         $term = $request->get('term');
         $operator = $this->service->findByNameOrIata($term);
-
-        if (!$operator) {
-            return ApiResponse::error('Operator not found', 404);
-        }
-
-        return new OperatorResource($operator);
+        return $operator
+            ? new OperatorResource($operator)
+            : ApiResponse::error('Exploitant non trouvé', 404);
     }
-
 }

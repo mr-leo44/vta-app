@@ -14,5 +14,5 @@ Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
-Route::get('/operators/find', [OperatorController::class, 'find']);
 Route::apiResource('operators', OperatorController::class);
+Route::get('operators/search', [OperatorController::class, 'search'])->name('operators.search');

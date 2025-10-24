@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\OperatorController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -12,3 +13,6 @@ Route::get('/user', function (Request $request) {
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');;
 
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
+
+Route::get('/operators/find', [OperatorController::class, 'find']);
+Route::apiResource('operators', OperatorController::class);

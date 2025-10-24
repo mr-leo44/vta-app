@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Models\Operator;
+use App\Helpers\ApiResponse;
+use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\OperatorResource;
+use App\Services\OperatorServiceInterface;
 use App\Http\Requests\StoreOperatorRequest;
 use App\Http\Requests\UpdateOperatorRequest;
-use App\Http\Resources\OperatorResource;
-use App\Models\Operator;
-use App\Services\OperatorServiceInterface;
-use App\Helpers\ApiResponse;
 
 /**
  * @group Operators
@@ -64,4 +65,22 @@ class OperatorController extends Controller
         $this->service->delete($operator);
         return ApiResponse::success(null, 'Operator deleted successfully');
     }
+
+        /**
+     * Find operator by name or IATA code.
+     *
+     * @queryParam term string required The search term (operator name or IATA code). Example: CAA
+     */
+    public function find(Request $request)
+    {
+        $term = $request->get('term');
+        $operator = $this->service->findByNameOrIata($term);
+
+        if (!$operator) {
+            return ApiResponse::error('Operator not found', 404);
+        }
+
+        return new OperatorResource($operator);
+    }
+
 }

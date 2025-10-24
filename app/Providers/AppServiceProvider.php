@@ -4,11 +4,15 @@ namespace App\Providers;
 
 use Dedoc\Scramble\Scramble;
 use App\Services\AuthService;
+use App\Services\OperatorService;
 use App\Services\AuthServiceInterface;
 use Illuminate\Support\ServiceProvider;
+use App\Repositories\OperatorRepository;
+use App\Services\OperatorServiceInterface;
 use App\Repositories\EloquentUserRepository;
 use App\Repositories\UserRepositoryInterface;
 use Dedoc\Scramble\Support\Generator\OpenApi;
+use App\Repositories\OperatorRepositoryInterface;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use Dedoc\Scramble\Support\Generator\SecurityRequirement;
 
@@ -21,6 +25,8 @@ class AppServiceProvider extends ServiceProvider
     {
         $this->app->bind(UserRepositoryInterface::class, EloquentUserRepository::class);
         $this->app->bind(AuthServiceInterface::class, AuthService::class);
+        $this->app->bind(\App\Repositories\OperatorRepositoryInterface::class, \App\Repositories\OperatorRepository::class);
+        $this->app->bind(\App\Services\OperatorServiceInterface::class, \App\Services\OperatorService::class);
     }
 
     /**

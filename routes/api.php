@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\AircraftController;
 use App\Http\Controllers\Api\OperatorController;
 
 Route::get('/user', function (Request $request) {
@@ -16,3 +17,8 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanc
 
 Route::get('operators/search', [OperatorController::class, 'search'])->name('operators.search');
 Route::apiResource('operators', OperatorController::class);
+
+Route::get('aircrafts/search', [AircraftController::class, 'search'])->name('aircrafts.search');
+Route::get('operators/{operator}/aircrafts', [AircraftController::class, 'byOperator'])->name('aircrafts.byOperator');
+Route::apiResource('aircrafts', AircraftController::class);
+

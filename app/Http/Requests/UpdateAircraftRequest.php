@@ -21,13 +21,13 @@ class UpdateAircraftRequest extends FormRequest
      */
     public function rules(): array
     {
-        $aircraftId = $this->route('aircraft')->id;
+        $aircraftId = request()->route('aircraft')->id;
         return [
-            'immatriculation' => "required|string|unique:aircrafts,immatriculation,{$aircraftId}",
+            'immatriculation' => "sometimes|string|unique:aircrafts,immatriculation,{$aircraftId}",
             'pmad' => 'nullable|integer',
             'in_activity' => 'boolean',
-            'aircraft_type_id' => 'required|exists:aircraft_types,id',
-            'operator_id' => 'required|exists:operators,id',
+            'aircraft_type_id' => 'sometimes|exists:aircraft_types,id',
+            'operator_id' => 'sometimes|exists:operators,id',
         ];
     }
 }

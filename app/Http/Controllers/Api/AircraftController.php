@@ -1,9 +1,10 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Api;
 
 use App\Models\Aircraft;
 use Illuminate\Http\Request;
+use App\Http\Controllers\Controller;
 use App\Services\AircraftServiceInterface;
 use App\Http\Requests\StoreAircraftRequest;
 use App\Http\Requests\UpdateAircraftRequest;
@@ -26,9 +27,6 @@ class AircraftController extends Controller
         return response()->json($this->service->store($request->validated()), 201);
     }
 
-    /** Show specific aircraft */
-    public function show(Aircraft $aircraft) { return response()->json($aircraft); }
-
     /** Update an aircraft */
     public function update(UpdateAircraftRequest $request, Aircraft $aircraft)
     {
@@ -42,7 +40,7 @@ class AircraftController extends Controller
         return response()->noContent();
     }
 
-    /** Search by registration */
+    /** Search by immatriculation */
     public function search(Request $request)
     {
         $aircraft = $this->service->findByImmatriculation($request->get('term'));

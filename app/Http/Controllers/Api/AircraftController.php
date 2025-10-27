@@ -4,9 +4,11 @@ namespace App\Http\Controllers\Api;
 
 use App\Models\Aircraft;
 use Illuminate\Support\Js;
+use App\Helpers\ApiResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
+use App\Http\Resources\AircraftResource;
 use App\Services\AircraftServiceInterface;
 use App\Http\Requests\StoreAircraftRequest;
 use App\Http\Requests\UpdateAircraftRequest;
@@ -21,124 +23,174 @@ class AircraftController extends Controller
     public function __construct(protected AircraftServiceInterface $service) {}
 
     /**
-     * Display all aircrafts.
+     * Get all aircrafts.
+     *
+     * Retrieves all aircrafts from the database.
      *
      * @return \Illuminate\Http\JsonResponse
+     * @response 200 OK
+     * @responseContent json
      */
     public function index()
     {
-        /**
-         * Get all aircrafts.
-         *
-         * @return \Illuminate\Http\JsonResponse
-         */
-        return response()->json($this->service->getAll());
+        // Retrieve all aircrafts
+        $aircrafts = $this->service->getAll();
+
+        // Return the response
+        return AircraftResource::collection($aircrafts);
     }
 
     /**
      * Store a new aircraft
      *
+     * Retrieves the request data, validates it, and stores a new aircraft in the database.
+     * Returns a JSON response containing the newly created aircraft.
+     *
      * @api {post} /aircrafts
      * @apiName Store a new aircraft
      * @apiGroup Aircrafts
-     * @apiParam {string} immatriculation The immatriculation (registration number) of the aircraft
+     * @apiParam {string} immatriculation The immatriculation (immatriculation number) of the aircraft
      * @apiParam {string} pmad The purchase made at date of the aircraft
      * @apiParam {boolean} in_activity Whether the aircraft is currently in use
      * @apiParam {integer} aircraft_type_id The ID of the aircraft type
      * @apiParam {integer} operator_id The ID of the operator
      * @apiSuccessResponse {json} The newly created aircraft
+     * @response 201 Created
+     * @responseContent json
      */
     public function store(StoreAircraftRequest $request)
     {
-        /**
-         * Store a new aircraft
-         *
-         * @param StoreAircraftRequest $request The request object
-         * @return \Illuminate\Http\JsonResponse The newly created aircraft
-         */
-        return response()->json($this->service->store($request->validated()), 201);
+        // Retrieve the request data
+        $validatedData = $request->validated();
+
+        // Store the new aircraft in the database
+        $aircraft = $this->service->store($validatedData);
+
+        // Return the response
+        return new AircraftResource($aircraft);
+    }
+
+     /**
+     * Retrieves an aircraft by ID.
+     *
+     * @param Aircraft $aircraft
+     * @return \Illuminate\Http\JsonResponse
+     * @response 200 OK
+     * @responseContent json
+     */
+    public function show(Aircraft $aircraft)
+    {
+        // Return the aircraft as a JSON response
+        return new AircraftResource($aircraft);
     }
 
     /**
      * Update an existing aircraft.
      *
+     * This endpoint updates an existing aircraft in the database.
+     *
      * @api {put} /aircrafts/{aircraft}
      * @apiName Update an aircraft
      * @apiGroup Aircrafts
-     * @apiParam {string} immatriculation The immatriculation (registration number) of the aircraft
+     * @apiParam {string} immatriculation The immatriculation (immatriculation number) of the aircraft
      * @apiParam {string} pmad The purchase made at date of the aircraft
      * @apiParam {boolean} in_activity Whether the aircraft is currently in use
      * @apiParam {integer} aircraft_type_id The ID of the aircraft type
      * @apiParam {integer} operator_id The ID of the operator
      * @apiSuccessResponse {json} The updated aircraft
+     * @response 200 OK
+     * @responseContent json
      */
     public function update(UpdateAircraftRequest $request, Aircraft $aircraft)
     {
-        /**
-         * Update an existing aircraft.
-         *
-         * @param UpdateAircraftRequest $request The request object
-         * @param Aircraft $aircraft The aircraft to update
-         * @return \Illuminate\Http\JsonResponse The updated aircraft
-         */
-        return response()->json($this->service->update($aircraft, $request->validated()));
+        // Retrieve the validated data from the request
+        $validatedData = $request->validated();
+
+        // Update the aircraft in the database
+        $updatedAircraft = $this->service->update($aircraft, $validatedData);
+
+        // Return the updated aircraft as a JSON response
+        return new AircraftResource($updatedAircraft);
     }
     /**
-     * Delete an aircraft.
+     * Delete an aircraft from the database.
+     *
+     * This endpoint deletes an existing aircraft from the database.
      *
      * @api {delete} /aircrafts/{aircraft}
      * @apiName Delete an aircraft
      * @apiGroup Aircrafts
-     * @apiParam {integer} aircraft The ID of the aircraft to delete
-     * @apiSuccessResponse {json} Empty response
+     * @apiParam {integer} aircraft The ID of the aircraft
+     * @apiSuccessResponse {json} No response
+     * @response 204 No Content
      */
     public function destroy(Aircraft $aircraft)
     {
-        /**
-         * Delete an aircraft.
-         *
-         * @param Aircraft $aircraft The aircraft to delete
-         * @return \Illuminate\Http\JsonResponse Empty response
-         */
+        // Delete the aircraft from the database
         $this->service->delete($aircraft);
-        return response()->noContent();
+        
+        // Return a successful response with no content
+        return ApiResponse::success(null, 'Aircraft deleted successfully');
     }
 
     /**
-     * Search for an aircraft by immatriculation.
+     * Search for an aircraft by its immatriculation.
+     *
+     * This endpoint searches for an aircraft by its immatriculation.
      *
      * @api {get} /aircrafts/search?term={term}
-     * @apiName Search an aircraft by immatriculation
+     * @apiName Search for an aircraft by immatriculation
      * @apiGroup Aircrafts
-     * @apiParam {string} term The immatriculation (registration number) to search for
-     * @apiSuccessResponse {json} The aircraft with the given immatriculation, or an empty array if none found
+     * @apiParam {string} term The immatriculation to search. Example: 9Q-ABC
+     * @apiSuccessResponse {json} The searched aircraft
+     * @response 200 OK
+     * @responseContent json
+     * @apiErrorExample {json} Aircraft not found
+     * @response 404 Not Found
      */
     public function search(Request $request)
     {
         /**
-         * Search for an aircraft by immatriculation.
+         * The immatriculation to search.
          *
-         * @param Request $request The request object
-         * @return \Illuminate\Http\JsonResponse The aircraft with the given immatriculation, or an empty array if none found
+         * @var string
          */
-        $aircraft = $this->service->findByImmatriculation($request->get('term'));
-        return response()->json($aircraft ?: []);
+        $term = $request->get('term');
+
+        /**
+         * The searched aircraft.
+         *
+         * @var Aircraft|null
+         */
+        $aircraft = $this->service->findByImmatriculation($term);
+
+        // Return the searched aircraft as a JSON response
+        return $aircraft ? new AircraftResource($aircraft) : ApiResponse::error('Aircraft not found', 404);
     }
+
     /**
-     * List all aircrafts by operator.
+     * List aircrafts by operator.
      *
-     * @param int $operatorId The ID of the operator to search for
-     * @return \Illuminate\Http\JsonResponse The aircrafts belonging to the operator, or an empty array if none found
-     * @api {get} /aircrafts/operator/{operatorId}
-     * @apiName List all aircrafts by operator
+     * This endpoint returns a list of aircrafts by the operator they belong to.
+     *
+     * @api {get} /aircrafts/by-operator/{operator}
+     * @apiName List aircrafts by operator
      * @apiGroup Aircrafts
+     * @apiParam {int} operator required The operator id. Example: 1
+     * @apiSuccessResponse {json} The list of aircrafts
+     * @response 200 OK
+     * @responseContent json
      */
     public function byOperator(int $operatorId)
     {
-        // Get all aircrafts that belong to the given operator
+        /**
+         * The list of aircrafts.
+         *
+         * @var Collection
+         */
         $aircrafts = $this->service->findByOperator($operatorId);
 
-        // Return the aircrafts in JSON format
-        return response()->json($aircrafts ?: []);
+        // Return the list of aircrafts as a JSON response
+        return AircraftResource::collection($aircrafts);
     }
 }

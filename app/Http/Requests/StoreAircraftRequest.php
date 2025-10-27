@@ -22,7 +22,7 @@ class StoreAircraftRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'registration' => 'required|string|unique:aircrafts',
+            'immatriculation' => 'required|string|unique:aircrafts',
             'pmad' => 'nullable|integer',
             'in_activity' => 'boolean',
             'aircraft_type_id' => 'required|exists:aircraft_types,id',

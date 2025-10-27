@@ -23,7 +23,7 @@ class UpdateAircraftRequest extends FormRequest
     {
         $aircraftId = $this->route('aircraft')->id;
         return [
-            'registration' => "required|string|unique:aircrafts,registration,{$aircraftId}",
+            'immatriculation' => "required|string|unique:aircrafts,immatriculation,{$aircraftId}",
             'pmad' => 'nullable|integer',
             'in_activity' => 'boolean',
             'aircraft_type_id' => 'required|exists:aircraft_types,id',

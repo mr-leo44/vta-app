@@ -3,7 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Aircraft;
+use Illuminate\Support\Js;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Services\AircraftServiceInterface;
 use App\Http\Requests\StoreAircraftRequest;
@@ -44,7 +46,7 @@ class AircraftController extends Controller
     public function search(Request $request)
     {
         $aircraft = $this->service->findByImmatriculation($request->get('term'));
-        return response()->json($aircraft ?: [], $aircraft ? 200 : 404);
+        return response()->json($aircraft ?: []);
     }
 
     /** List all aircrafts by operator */

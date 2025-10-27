@@ -9,7 +9,7 @@ class Aircraft extends Model
 {
     protected $table = 'aircrafts';
     protected $fillable = [
-        'registration', 'pmad', 'in_activity', 'aircraft_type_id', 'operator_id'
+        'immatriculation', 'pmad', 'in_activity', 'aircraft_type_id', 'operator_id'
     ];
 
     public function type(): BelongsTo

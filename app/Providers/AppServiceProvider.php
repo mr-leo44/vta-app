@@ -27,6 +27,8 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(AuthServiceInterface::class, AuthService::class);
         $this->app->bind(\App\Repositories\OperatorRepositoryInterface::class, \App\Repositories\OperatorRepository::class);
         $this->app->bind(\App\Services\OperatorServiceInterface::class, \App\Services\OperatorService::class);
+        $this->app->bind(\App\Repositories\AircraftRepositoryInterface::class, \App\Repositories\AircraftRepository::class);
+        $this->app->bind(\App\Services\AircraftServiceInterface::class, \App\Services\AircraftService::class);
     }
 
     /**

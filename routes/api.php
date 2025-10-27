@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\AircraftController;
 use App\Http\Controllers\Api\OperatorController;
 use App\Http\Controllers\Api\AircraftTypeController;
+use App\Http\Controllers\Api\FlightJustificationController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -27,3 +28,4 @@ Route::get('operators/{operator}/aircrafts', [AircraftController::class, 'byOper
 Route::get('aircrafts/search', [AircraftController::class, 'search'])->name('aircrafts.search');
 Route::apiResource('aircrafts', AircraftController::class);
 
+Route::apiResource('flight-justifications', FlightJustificationController::class);

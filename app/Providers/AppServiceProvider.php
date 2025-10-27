@@ -20,9 +20,11 @@ use Dedoc\Scramble\Support\Generator\OpenApi;
 use App\Services\AircraftTypeServiceInterface;
 use App\Repositories\AircraftRepositoryInterface;
 use App\Repositories\OperatorRepositoryInterface;
+use App\Repositories\FlightJustificationRepository;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use App\Repositories\AircraftTypeRepositoryInterface;
 use Dedoc\Scramble\Support\Generator\SecurityRequirement;
+use App\Repositories\FlightJustificationRepositoryInterface;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -39,6 +41,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(AircraftServiceInterface::class, AircraftService::class);
         $this->app->bind(AircraftTypeRepositoryInterface::class, AircraftTypeRepository::class);
         $this->app->bind(AircraftTypeServiceInterface::class, AircraftTypeService::class);
+        $this->app->bind(FlightJustificationRepositoryInterface::class, FlightJustificationRepository::class);
     }
 
     /**

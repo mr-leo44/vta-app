@@ -17,8 +17,8 @@ class AircraftResource extends JsonResource
         return [
             // Unique identifier for the aircraft
             'id' => $this->id,
-            // Registration number of the aircraft
-            'immatriculation' => $this->registration,
+            // immatriculation number of the aircraft
+            'immatriculation' => $this->immatriculation,
             // Maximum take-off weight of the aircraft in kilograms
             'pmad' => $this->pmad,
             // Whether the aircraft is currently in service

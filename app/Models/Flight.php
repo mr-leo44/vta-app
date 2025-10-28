@@ -50,7 +50,7 @@ class Flight extends Model
         return $this->belongsTo(Aircraft::class);
     }
 
-    public function statistics()
+    public function statistic()
     {
         return $this->hasOne(FlightStatistic::class);
     }

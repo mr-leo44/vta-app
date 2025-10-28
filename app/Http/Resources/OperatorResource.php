@@ -11,13 +11,10 @@ class OperatorResource extends JsonResource
         return [
             'id' => $this->id,
             'name' => $this->name,
+            'sigle' => $this->sigle,
             'iata_code' => $this->iata_code,
             'icao_code' => $this->icao_code,
             'country' => $this->country,
-            'flight_regime' => [
-                'value' => $this->flight_regime->value,
-                'label' => $this->flight_regime->label(),
-            ],
             'flight_type' => [
                 'value' => $this->flight_type->value,
                 'label' => $this->flight_type->label(),

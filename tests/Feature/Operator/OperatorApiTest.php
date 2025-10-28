@@ -20,7 +20,7 @@ it('can list all operators', function () {
     $response->assertOk()
         ->assertJsonStructure([
             'data' => [
-                '*' => ['id', 'name', 'iata_code', 'icao_code', 'flight_regime', 'flight_type', 'flight_nature']
+                '*' => ['id', 'name', 'sigle', 'iata_code', 'icao_code', 'flight_type', 'flight_nature']
             ]
         ]);
 });
@@ -28,9 +28,9 @@ it('can list all operators', function () {
 it('can create a new operator', function () {
     $data = [
         'name' => 'Congo Airways',
+        'sigle' => 'CGA',
         'iata_code' => '8Z',
         'icao_code' => 'CGA',
-        'flight_regime' => 'domestic',   // Enum: 'domestic' | 'international'
         'flight_type' => 'regular',      // Enum: 'regular' | 'non-regular'
         'flight_nature' => 'commercial', // Enum: 'commercial' | 'non-commercial'
         'country' => 'RDC',              // Exemple de champ additionnel
@@ -82,9 +82,9 @@ it('can search operators by name and iata code', function () {
     // Création des opérateurs
     Operator::factory()->create([
         'name' => 'Congo Airways',
+        'sigle' => 'CGA',
         'iata_code' => '8Z',
         'icao_code' => 'CGA',
-        'flight_regime' => 'domestic',
         'flight_type' => 'regular',
         'flight_nature' => 'commercial',
         'country' => 'RDC',
@@ -92,9 +92,9 @@ it('can search operators by name and iata code', function () {
 
     Operator::factory()->create([
         'name' => 'Ethiopian Airlines',
+        'sigle' => 'ETH',
         'iata_code' => 'ET',
         'icao_code' => 'ETH',
-        'flight_regime' => 'international',
         'flight_type' => 'regular',
         'flight_nature' => 'commercial',
         'country' => 'Ethiopia',

@@ -19,15 +19,14 @@ class OperatorFactory extends Factory
      */
     public function definition(): array
     {
-        $regimes = ['domestic', 'international'];
         $types = ['regular', 'non_regular'];
         $natures = ['commercial', 'non_commercial'];
 
         return [
             'name' => $this->faker->company(),
+            'sigle' => $this->faker->lexify('????????'),
             'iata_code' => strtoupper($this->faker->unique()->lexify('??')),
             'icao_code' => strtoupper($this->faker->unique()->lexify('???')),
-            'flight_regime' => $this->faker->randomElement($regimes),
             'flight_type' => $this->faker->randomElement($types),
             'flight_nature' => $this->faker->randomElement($natures),
             'country' => $this->faker->country(),

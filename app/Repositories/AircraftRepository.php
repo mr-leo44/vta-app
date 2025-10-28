@@ -10,17 +10,17 @@ class AircraftRepository implements AircraftRepositoryInterface
 {
     public function all(): Collection
     {
-        return Aircraft::latest()->get();
+        return Aircraft::with(['operator', 'type'])->latest()->get();
     }
 
     public function findByImmatriculation(string $immatriculation): ?Aircraft
     {
-        return Aircraft::where('immatriculation', $immatriculation)->first();
+        return Aircraft::with(['operator', 'type'])->where('immatriculation', $immatriculation)->first();
     }
 
     public function findByOperator(int $operatorId): Collection
     {
-        return Aircraft::where('operator_id', $operatorId)->get();
+        return Aircraft::with(['operator', 'type'])->where('operator_id', $operatorId)->get();
     }
 
     public function create(array $data): Aircraft

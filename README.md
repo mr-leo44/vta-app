@@ -1,136 +1,394 @@
-# VTA API
+# VTA API Documentation
 
-Petit service API pour gérer la production VTA, l'authentification par username/password (Sanctum), et la gestion des rôles/permissions via Spatie.
+API REST pour la gestion des vols, avions, opérateurs et justifications de vol.
 
-Ce README décrit :
-- comment fonctionne l'auth (endpoints),
-- comment Spatie est intégré,
-- comment générer la documentation API avec Dedoc Scramble,
-- spécifications d'export Excel (rapport mensuel/annuel) à implémenter.
+## 📋 Table des matières
 
-## Endpoints d'authentification
+- [Informations générales](#informations-générales)
+- [Authentication](#authentication)
+- [Endpoints](#endpoints)
+  - [Authentication](#authentication-1)
+  - [Aircrafts](#aircrafts)
+  - [Aircraft Types](#aircraft-types)
+  - [Operators](#operators)
+  - [Flights](#flights)
+  - [Flight Justifications](#flight-justifications)
+- [Modèles de données](#modèles-de-données)
+- [Codes d'erreur](#codes-derreur)
 
-- POST /api/login
-  - body: { "username": "...", "password": "..." }
-  - retourne : user (sans password) et token Sanctum
-- POST /api/logout
-  - protégé par `auth:sanctum` ; révoque le token courant
-- GET /api/user
-  - protégé par `auth:sanctum` ; retourne l'utilisateur authentifié
 
-Les réponses sont formatées via le helper `App\Helpers\ApiResponse`.
+## Informations générales
 
-## Architecture & Clean Code
+**Version**: 0.0.1  
+**Base URL**: `http://localhost:8000/api` (En local) 
+**Format**: JSON
 
-- Repositories (ex: `App\Repositories\UserRepositoryInterface` + `EloquentUserRepository`)
-- Services (ex: `App\Services\AuthServiceInterface` + `AuthService`)
-- FormRequests (ex: `App\Http\Requests\LoginRequest`)
-- Controllers (ex: `App\Http\Controllers\Api\AuthController`)
+## Authentication
 
-Ces couches respectent SOLID et facilitent les tests.
+L'API utilise l'authentification Bearer Token. Incluez le token dans le header de vos requêtes :
 
-## Rôles & Permissions (Spatie)
+```
+Authorization: Bearer {your_token}
+```
 
-Le projet utilise `spatie/laravel-permission` pour gérer les rôles et permissions.
+### Login
+```http
+POST /login
+Content-Type: application/json
 
-- Le package est listé dans `composer.json`.
-- Le modèle `App\Models\User` utilise déjà le trait `HasRoles`.
+{
+  "username": "string",
+  "password": "string"
+}
+```
 
-Installation (si pas déjà fait) :
+**Réponse**: Retourne un token d'authentification
 
+### Logout
+```http
+POST /logout
+Authorization: Bearer {token}
+```
+
+## Endpoints
+
+### Aircrafts
+
+#### Lister tous les avions
+```http
+GET /aircrafts
+```
+
+#### Rechercher un avion par immatriculation
+```http
+GET /aircrafts/search?term={immatriculation}
+```
+
+#### Lister les avions par opérateur
+```http
+GET /operators/{operatorId}/aircrafts
+```
+
+#### Afficher un avion
+```http
+GET /aircrafts/{aircraft}
+```
+
+#### Créer un avion
+```http
+POST /aircrafts
+Content-Type: application/json
+
+{
+  "immatriculation": "string",
+  "pmad": integer|null,
+  "in_activity": boolean,
+  "aircraft_type_id": integer,
+  "operator_id": integer
+}
+```
+
+#### Mettre à jour un avion
+```http
+PUT /aircrafts/{aircraft}
+Content-Type: application/json
+
+{
+  "immatriculation": "string",
+  "pmad": integer,
+  "in_activity": boolean,
+  "aircraft_type_id": integer,
+  "operator_id": integer
+}
+```
+
+#### Supprimer un avion
+```http
+DELETE /aircrafts/{aircraft}
+```
+
+### Aircraft Types
+
+#### Lister tous les types d'avions
+```http
+GET /aircraft-types
+```
+
+#### Rechercher un type d'avion
+```http
+GET /aircraft-types/find/{query}
+```
+
+#### Créer un type d'avion
+```http
+POST /aircraft-types
+Content-Type: application/json
+
+{
+  "name": "string",
+  "sigle": "string"
+}
+```
+
+#### Mettre à jour un type d'avion
+```http
+PUT /aircraft-types/{aircraftType}
+Content-Type: application/json
+
+{
+  "name": "string",
+  "sigle": "string"
+}
+```
+
+#### Supprimer un type d'avion
+```http
+DELETE /aircraft-types/{aircraftType}
+```
+
+### Operators
+
+#### Lister tous les opérateurs
+```http
+GET /operators
+```
+
+#### Rechercher un opérateur
+```http
+GET /operators/search?term={name_or_iata}
+```
+
+#### Afficher un opérateur
+```http
+GET /operators/{operator}
+```
+
+#### Créer un opérateur
+```http
+POST /operators
+Content-Type: application/json
+
+{
+  "name": "string",
+  "sigle": "string",
+  "iata_code": "string|null",
+  "icao_code": "string|null",
+  "country": "string|null",
+  "flight_type": "regular|non_regular",
+  "flight_nature": "commercial|non_commercial"
+}
+```
+
+#### Mettre à jour un opérateur
+```http
+PUT /operators/{operator}
+Content-Type: application/json
+
+{
+  "name": "string",
+  "sigle": "string",
+  "iata_code": "string|null",
+  "icao_code": "string|null",
+  "country": "string|null",
+  "flight_type": "regular|non_regular",
+  "flight_nature": "commercial|non_commercial"
+}
+```
+
+#### Supprimer un opérateur
+```http
+DELETE /operators/{operator}
+```
+
+### Flights
+
+#### Lister tous les vols (paginé)
+```http
+GET /flights
+```
+
+**Réponse**: Objet paginé avec `data`, `links` et `meta`
+
+#### Afficher un vol
+```http
+GET /flights/{flight}
+```
+
+#### Créer un vol
+```http
+POST /flights
+Content-Type: application/json
+
+{
+  "flight_number": "string",
+  "operator_id": integer,
+  "aircraft_id": integer,
+  "departure": ["string"],
+  "arrival": ["string"],
+  "departure_time": "datetime",
+  "arrival_time": "datetime",
+  "remarks": "string|null",
+  "statistics": ["string"]|null
+}
+```
+
+#### Mettre à jour un vol
+```http
+PUT /flights/{flight}
+Content-Type: application/json
+
+{
+  "flight_number": "string",
+  "operator_id": integer,
+  "aircraft_id": integer,
+  "departure": ["string"],
+  "arrival": ["string"],
+  "departure_time": "datetime",
+  "arrival_time": "datetime",
+  "remarks": "string|null",
+  "statistics": ["string"]|null
+}
+```
+
+#### Supprimer un vol
+```http
+DELETE /flights/{flight}
+```
+
+### Flight Justifications
+
+#### Lister toutes les justifications
+```http
+GET /flight-justifications
+```
+
+#### Créer une justification
+```http
+POST /flight-justifications
+Content-Type: application/json
+
+{
+  "name": "string"
+}
+```
+
+#### Mettre à jour une justification
+```http
+PUT /flight-justifications/{flightJustification}
+Content-Type: application/json
+
+{
+  "name": "string"
+}
+```
+
+#### Supprimer une justification
+```http
+DELETE /flight-justifications/{flightJustification}
+```
+
+## Modèles de données
+
+### FlightResource
+```json
+{
+  "id": integer,
+  "flight_number": "string",
+  "operator": {
+    "name": "string",
+    "sigle": "string"
+  },
+  "aircraft": "string",
+  "flight_regime": "domestic|international",
+  "flight_type": "regular|non_regular",
+  "flight_nature": "commercial|non_commercial",
+  "status": "qrf|prevu|atteri|annule|detourne",
+  "departure": [],
+  "arrival": [],
+  "departure_time": "datetime",
+  "arrival_time": "datetime",
+  "remarks": "string|null",
+  "statistics": {
+    "passengers_count": integer,
+    "pax_bus": integer,
+    "go_pass_count": integer,
+    "fret_count": [],
+    "excedents": [],
+    "passengers_ecart": integer,
+    "has_justification": boolean,
+    "justification": []
+  }
+}
+```
+
+### OperatorResource
+```json
+{
+  "id": integer,
+  "name": "string",
+  "sigle": "string",
+  "iata_code": "string|null",
+  "icao_code": "string|null",
+  "country": "string|null",
+  "flight_type": {
+    "value": "string",
+    "label": "string"
+  },
+  "flight_nature": {
+    "value": "string",
+    "label": "string"
+  },
+  "created_at": "datetime",
+  "updated_at": "datetime"
+}
+```
+
+## Codes d'erreur
+
+- **200**: OK
+- **201**: Créé avec succès
+- **204**: Pas de contenu (succès de suppression)
+- **401**: Non authentifié
+- **404**: Ressource non trouvée
+- **422**: Erreur de validation
+
+### Format d'erreur de validation (422)
+```json
+{
+  "message": "The given data was invalid.",
+  "errors": {
+    "field_name": [
+      "Error message"
+    ]
+  }
+}
+```
+
+### Format d'erreur 404
+```json
+{
+  "message": "Resource not found"
+}
+```
+
+## Exemples d'utilisation
+
+### Créer un vol avec cURL
 ```bash
-composer require spatie/laravel-permission
-php artisan vendor:publish --provider="Spatie\Permission\PermissionServiceProvider"
-php artisan migrate
+curl -X POST http://localhost:8000/api/flights \
+  -H "Authorization: Bearer {token}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "flight_number": "AF001",
+    "operator_id": 1,
+    "aircraft_id": 1,
+    "departure": ["CDG"],
+    "arrival": ["JFK"],
+    "departure_time": "2024-01-15T10:00:00Z",
+    "arrival_time": "2024-01-15T14:00:00Z"
+  }'
 ```
 
-Exemples :
+## Support
 
-```php
-$user->assignRole('admin');
-$user->givePermissionTo('export reports');
-```
-
-Seule la role `admin` pourra réinitialiser les mots de passe (flux à implémenter côté admin).
-
-## Documentation API — Dedoc Scramble
-
-Ce projet utilise Dedoc Scramble (`dedoc/scramble`) pour générer la documentation à partir de fichiers Markdown et annotations dans le code.
-
-Workflow recommandé :
-
-1. Installer le package (si nécessaire) :
-
-```bash
-composer require --dev dedoc/scramble
-```
-
-2. Placer des fichiers de documentation Markdown dans `docs/` ou annoter les contrôleurs et FormRequests.
-
-3. Commande pour générer la documentation statique :
-
-```bash
-php artisan scramble:render
-# ou selon la configuration du package
-```
-
-4. Le rendu peut être exposé sous `public/docs` ou maintenu dans `docs/`.
-
-Comment annoter un contrôleur / FormRequest :
-
-- Dans un contrôleur, ajouter une courte description au-dessus de la méthode et un exemple de request/response en Markdown.
-- Dans un `FormRequest`, ajouter les règles et décrire les champs.
-
-Exemple rapide pour `/api/login` (contrôleur) :
-
-```php
-/**
- * Log in a user by username/password.
- *
- * Request example:
- * {
- *   "username": "jdoe",
- *   "password": "secret"
- * }
- *
- * Response 200:
- * {
- *   "success": true,
- *   "data": { "user": {...}, "token": "..." }
- * }
- */
-public function login(LoginRequest $request) { ... }
-```
-
-Je peux enrichir automatiquement ces fichiers si tu veux (j'ai préparé des fichiers `docs/` initiaux pour auth, permissions et exports).
-
-## Exports Excel (spécs)
-
-L'application devra fournir des exports Excel/CSV pour les rapports de production. Voici la spécification proposée :
-
-- Rapport mensuel : colonnes (date, shift, operator_id, production_count, defects_count, downtime_minutes, remarks)
-- Rapport annuel : agrégation mensuelle, totaux, et éventuellement plusieurs feuilles dans le classeur (par ligne/atelier)
-
-Recommandations d'implémentation :
-
-- Utiliser `maatwebsite/excel` pour générer XLSX/CSV.
-- Pour gros volumes, générer via queue (jobs) et stockage sur `storage/app/exports`.
-- Endpoint pour lancer l'export (POST /api/exports/production) qui retourne 202 + job id, et endpoint pour récupérer le fichier fini.
-
-## Tests
-
-- Tests unitaires pour `AuthService` existent (happy path, bad credentials, logout). Exécuter via :
-
-```bash
-vendor/bin/pest
-```
-
-## To do / prochaines étapes
-
-- Ajouter endpoints admin pour gestion des rôles et reset de mot de passe (admin only).
-- Implémenter exports Excel avec `maatwebsite/excel` (classe d'export, job, endpoint).
-- Générer documentation Scramble et la publier (public/docs).
-
-Si tu veux, j'exécute maintenant :
-- générer la doc Scramble et la placer dans `public/docs`,
-- ou installer `maatwebsite/excel` et créer une première classe d'export minimal.
+Pour toute question ou problème, veuillez contacter l'équipe de développement.

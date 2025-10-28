@@ -7,6 +7,7 @@ use App\Services\AuthService;
 use App\Services\AircraftService;
 use App\Services\OperatorService;
 use App\Services\AircraftTypeService;
+use App\Repositories\FlightRepository;
 use App\Services\AuthServiceInterface;
 use Illuminate\Support\ServiceProvider;
 use App\Repositories\AircraftRepository;
@@ -18,6 +19,7 @@ use App\Repositories\EloquentUserRepository;
 use App\Repositories\UserRepositoryInterface;
 use Dedoc\Scramble\Support\Generator\OpenApi;
 use App\Services\AircraftTypeServiceInterface;
+use App\Repositories\FlightRepositoryInterface;
 use App\Repositories\AircraftRepositoryInterface;
 use App\Repositories\OperatorRepositoryInterface;
 use App\Repositories\FlightJustificationRepository;
@@ -42,6 +44,7 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(AircraftTypeRepositoryInterface::class, AircraftTypeRepository::class);
         $this->app->bind(AircraftTypeServiceInterface::class, AircraftTypeService::class);
         $this->app->bind(FlightJustificationRepositoryInterface::class, FlightJustificationRepository::class);
+        $this->app->bind(FlightRepositoryInterface::class, FlightRepository::class);
     }
 
     /**

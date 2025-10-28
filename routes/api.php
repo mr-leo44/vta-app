@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 
 use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\FlightController;
 use App\Http\Controllers\Api\AircraftController;
 use App\Http\Controllers\Api\OperatorController;
 use App\Http\Controllers\Api\AircraftTypeController;
@@ -29,3 +30,4 @@ Route::get('aircrafts/search', [AircraftController::class, 'search'])->name('air
 Route::apiResource('aircrafts', AircraftController::class);
 
 Route::apiResource('flight-justifications', FlightJustificationController::class);
+Route::apiResource('flights', FlightController::class);

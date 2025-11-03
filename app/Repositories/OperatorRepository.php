@@ -18,7 +18,7 @@ class OperatorRepository implements OperatorRepositoryInterface
      */
     public function all(): Collection
     {
-        return Operator::orderBy('name')->get();
+        return Operator::orderBy('name')->latest()->get();
     }
 
     /**
@@ -62,10 +62,12 @@ class OperatorRepository implements OperatorRepositoryInterface
      * @param string $query
      * @return Collection
      */
-    public function findByNameOrIata(string $term): ?Operator
+    public function findByNameOrIata(string $term): ?Collection
     {
         return Operator::where('name', 'like', "%$term%")
             ->orWhere('iata_code', 'like', "%$term%")
-            ->first();
+            ->orWhere('icao_code', 'like', "%$term%")
+            ->latest()->get();
+            
     }
 }

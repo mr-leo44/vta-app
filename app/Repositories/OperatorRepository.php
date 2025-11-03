@@ -18,7 +18,7 @@ class OperatorRepository implements OperatorRepositoryInterface
      */
     public function all(): Collection
     {
-        return Operator::orderBy('name')->latest()->get();
+        return Operator::with('flights', 'aircrafts')->orderBy('name')->latest()->get();
     }
 
     /**

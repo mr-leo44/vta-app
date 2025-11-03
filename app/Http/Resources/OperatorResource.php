@@ -2,6 +2,8 @@
 
 namespace App\Http\Resources;
 
+use App\Http\Resources\FlightResource;
+use App\Http\Resources\AircraftResource;
 use Illuminate\Http\Resources\Json\JsonResource;
 
 class OperatorResource extends JsonResource
@@ -23,6 +25,8 @@ class OperatorResource extends JsonResource
                 'value' => $this->flight_nature->value,
                 'label' => $this->flight_nature->label(),
             ],
+            'flights' => FlightResource::collection($this->whenLoaded('flights')),
+            'aircrafts' => AircraftResource::collection($this->whenLoaded('aircrafts')),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

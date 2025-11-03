@@ -15,5 +15,5 @@ interface OperatorRepositoryInterface
 
     public function delete(Operator $operator): bool;
 
-    public function findByNameOrIata(string $term): ?Operator;
+    public function findByNameOrIata(string $term): ?Collection;
 }

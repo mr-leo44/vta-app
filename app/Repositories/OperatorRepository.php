@@ -14,11 +14,11 @@ class OperatorRepository implements OperatorRepositoryInterface
     /**
      * Récupère tous les exploitants.
      *
-     * @return Collection
+     * @return Illuminate\\Pagination\\LengthAwarePaginator
      */
-    public function all(): Collection
+    public function all(): \Illuminate\Pagination\LengthAwarePaginator
     {
-        return Operator::with('flights', 'aircrafts')->orderBy('name')->latest()->get();
+        return Operator::with('flights', 'aircrafts')->orderBy('name')->latest()->paginate(10);
     }
 
     /**

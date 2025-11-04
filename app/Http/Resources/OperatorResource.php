@@ -26,7 +26,9 @@ class OperatorResource extends JsonResource
                 'label' => $this->flight_nature->label(),
             ],
             'flights' => FlightResource::collection($this->whenLoaded('flights')),
-            'aircrafts' => AircraftResource::collection($this->whenLoaded('aircrafts')),
+            'aircrafts' => AircraftResource::collection($this->whenLoaded('aircrafts', function() {
+                return $this->aircrafts()->with('type')->get();
+            })),
             'created_at' => $this->created_at,
             'updated_at' => $this->updated_at,
         ];

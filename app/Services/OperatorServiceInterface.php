@@ -4,10 +4,11 @@ namespace App\Services;
 
 use App\Models\Operator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 interface OperatorServiceInterface
 {
-    public function getAll(): Collection;
+    public function getAll(): LengthAwarePaginator;
 
     public function store(array $data): Operator;
 

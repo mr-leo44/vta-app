@@ -3,8 +3,9 @@
 namespace App\Services;
 
 use App\Models\Operator;
-use App\Repositories\OperatorRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
+use App\Repositories\OperatorRepositoryInterface;
 
 class OperatorService implements OperatorServiceInterface
 {
@@ -12,7 +13,7 @@ class OperatorService implements OperatorServiceInterface
         protected OperatorRepositoryInterface $repository
     ) {}
 
-    public function getAll(): Collection
+    public function getAll(): LengthAwarePaginator
     {
         return $this->repository->all();
     }

@@ -45,7 +45,7 @@ class OperatorController extends Controller
      */
     public function show(Operator $operator)
     {
-        return new OperatorResource($operator);
+        return new OperatorResource($operator->load(['flights', 'aircrafts.type']));
     }
 
     /**

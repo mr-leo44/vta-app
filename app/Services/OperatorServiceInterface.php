@@ -3,7 +3,6 @@
 namespace App\Services;
 
 use App\Models\Operator;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 interface OperatorServiceInterface
@@ -16,5 +15,5 @@ interface OperatorServiceInterface
 
     public function delete(Operator $operator): bool;
 
-    public function findByNameOrIata(string $term): ?Collection;
+    public function findByNameOrIata(string $term): ?LengthAwarePaginator;
 }

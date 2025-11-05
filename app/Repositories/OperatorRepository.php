@@ -3,7 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\Operator;
-use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
  * Repository pour la gestion des opérateurs.
@@ -60,14 +60,14 @@ class OperatorRepository implements OperatorRepositoryInterface
      * Recherche des opérateurs par nom ou code IATA.
      *
      * @param string $query
-     * @return Collection
+     * @return LengthAwarePaginator
      */
-    public function findByNameOrIata(string $term): ?Collection
+    public function findByNameOrIata(string $term): ?LengthAwarePaginator
     {
         return Operator::where('name', 'like', "%$term%")
             ->orWhere('iata_code', 'like', "%$term%")
             ->orWhere('icao_code', 'like', "%$term%")
-            ->latest()->get();
+            ->latest()->paginate(10);
             
     }
 }

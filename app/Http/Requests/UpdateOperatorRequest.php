@@ -6,10 +6,6 @@ use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
 
 
-/**
- * @property-read \App\Models\Operator $operator
- * @method mixed route(string|null $key = null, mixed $default = null)
- */
 class UpdateOperatorRequest extends FormRequest
 {
     public function authorize(): bool
@@ -19,7 +15,7 @@ class UpdateOperatorRequest extends FormRequest
 
     public function rules(): array
     {
-        $operatorId = $this->route('operator')->id ?? null;
+        $operatorId = request()->route('operator')->id;
 
         return [
             'name' => [

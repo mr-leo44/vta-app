@@ -33,7 +33,7 @@ class OperatorService implements OperatorServiceInterface
         return $this->repository->delete($operator);
     }
 
-    public function findByNameOrIata(string $term): ?Collection
+    public function findByNameOrIata(string $term): ?LengthAwarePaginator
     {
         return $this->repository->findByNameOrIata($term);
     }

@@ -2,25 +2,29 @@
 
 namespace App\Repositories;
 
-use Illuminate\Support\Collection;
 use App\Models\Aircraft;
+use Illuminate\Pagination\LengthAwarePaginator;
 use App\Repositories\AircraftRepositoryInterface;
 
 class AircraftRepository implements AircraftRepositoryInterface
 {
-    public function all(): Collection
+    public function all(): LengthAwarePaginator
     {
-        return Aircraft::with(['operator', 'type'])->latest()->get();
+        return Aircraft::with(['operator', 'type', 'flights'])->latest()->paginate(10);
     }
 
-    public function findByImmatriculation(string $immatriculation): ?Aircraft
+    public function search(string $term): ?LengthAwarePaginator
     {
-        return Aircraft::with(['operator', 'type'])->where('immatriculation', $immatriculation)->first();
-    }
-
-    public function findByOperator(int $operatorId): Collection
-    {
-        return Aircraft::with(['operator', 'type'])->where('operator_id', $operatorId)->get();
+        return Aircraft::with(['operator', 'type'])
+            ->where('immatriculation', 'like', "%$term%")
+            ->orWhereHas('operator', function ($query) use ($term) {
+                $query->where('name', 'like', "%$term%")
+                    ->orWhere('sigle', 'like', "%$term%");
+            })
+            ->orWhereHas('type', function ($query) use ($term) {
+                $query->where('name', 'like', "%$term%");
+            })
+            ->latest()->paginate(10);
     }
 
     public function create(array $data): Aircraft
@@ -34,8 +38,8 @@ class AircraftRepository implements AircraftRepositoryInterface
         return $aircraft;
     }
 
-    public function delete(Aircraft $aircraft): void
+    public function delete(Aircraft $aircraft): bool
     {
-        $aircraft->delete();
+        return $aircraft->delete();
     }
 }

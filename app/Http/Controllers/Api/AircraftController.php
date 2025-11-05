@@ -3,10 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Models\Aircraft;
-use Illuminate\Support\Js;
 use App\Helpers\ApiResponse;
 use Illuminate\Http\Request;
-use Illuminate\Http\JsonResponse;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AircraftResource;
 use App\Services\AircraftServiceInterface;
@@ -134,9 +132,9 @@ class AircraftController extends Controller
     }
 
     /**
-     * Search for an aircraft by its immatriculation.
+     * Search for an aircraft by its immatriculation, operator or type.
      *
-     * This endpoint searches for an aircraft by its immatriculation.
+     * This endpoint searches for an aircraft by its immatriculation, operator or type.
      *
      * @api {get} /aircrafts/search?term={term}
      * @apiName Search for an aircraft by immatriculation
@@ -147,11 +145,20 @@ class AircraftController extends Controller
      * @responseContent json
      * @apiErrorExample {json} Aircraft not found
      * @response 404 Not Found
+     *
+     * @return \Illuminate\Http\JsonResponse
+     */
+    /**
+     * Search for an aircraft by its immatriculation, operator or type.
+     *
+     * @param Request $request The request object containing the search term
+     *
+     * @return \Illuminate\Http\JsonResponse The searched aircraft as a JSON response
      */
     public function search(Request $request)
     {
         /**
-         * The immatriculation to search.
+         * The term to search.
          *
          * @var string
          */
@@ -162,35 +169,11 @@ class AircraftController extends Controller
          *
          * @var Aircraft|null
          */
-        $aircraft = $this->service->findByImmatriculation($term);
+        $aircrafts = $this->service->search($term);
 
         // Return the searched aircraft as a JSON response
-        return $aircraft ? new AircraftResource($aircraft) : ApiResponse::error('Aircraft not found', 404);
-    }
-
-    /**
-     * List aircrafts by operator.
-     *
-     * This endpoint returns a list of aircrafts by the operator they belong to.
-     *
-     * @api {get} /aircrafts/by-operator/{operator}
-     * @apiName List aircrafts by operator
-     * @apiGroup Aircrafts
-     * @apiParam {int} operator required The operator id. Example: 1
-     * @apiSuccessResponse {json} The list of aircrafts
-     * @response 200 OK
-     * @responseContent json
-     */
-    public function byOperator(int $operatorId)
-    {
-        /**
-         * The list of aircrafts.
-         *
-         * @var Collection
-         */
-        $aircrafts = $this->service->findByOperator($operatorId);
-
-        // Return the list of aircrafts as a JSON response
-        return AircraftResource::collection($aircrafts);
+        return $aircrafts
+            ? AircraftResource::collection($aircrafts)
+            : ApiResponse::error('Aéronef non trouvé', 404);
     }
 }

@@ -4,33 +4,22 @@ namespace App\Services;
 
 
 use App\Models\Aircraft;
-use Illuminate\Database\Eloquent\Collection;
 use App\Services\AircraftServiceInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
 use App\Repositories\AircraftRepositoryInterface;
 
 class AircraftService implements AircraftServiceInterface
 {
     public function __construct(protected AircraftRepositoryInterface $repository) {}
 
-    public function getAll(): Collection
+    public function getAll(): LengthAwarePaginator
     {
         return $this->repository->all();
     }
 
-    public function findByImmatriculation(string $immatriculation): ?Aircraft
+    public function search(string $term): ?LengthAwarePaginator
     {
-        return $this->repository->findByImmatriculation($immatriculation);
-    }
-
-    /**
-     * Returns all aircrafts that belong to the given operator.
-     *
-     * @param int $operatorId The ID of the operator.
-     * @return Collection The aircrafts belonging to the operator.
-     */
-    public function findByOperator(int $operatorId): Collection
-    {
-        return $this->repository->findByOperator($operatorId);
+        return $this->repository->search($term);
     }
     
     public function store(array $data): Aircraft
@@ -41,8 +30,8 @@ class AircraftService implements AircraftServiceInterface
     {
         return $this->repository->update($aircraft, $data);
     }
-    public function delete(Aircraft $aircraft): void
+    public function delete(Aircraft $aircraft): bool
     {
-        $this->repository->delete($aircraft);
+        return $this->repository->delete($aircraft);
     }
 }

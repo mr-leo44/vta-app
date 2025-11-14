@@ -7,14 +7,20 @@ use App\Models\Aircraft;
 use App\Services\AircraftServiceInterface;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Repositories\AircraftRepositoryInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 class AircraftService implements AircraftServiceInterface
 {
     public function __construct(protected AircraftRepositoryInterface $repository) {}
 
-    public function getAll(): LengthAwarePaginator
+    public function getAll(): Collection
     {
         return $this->repository->all();
+    }
+
+     public function getAllPaginated(): LengthAwarePaginator
+    {
+        return $this->repository->allPaginated();
     }
 
     public function search(string $term): ?LengthAwarePaginator

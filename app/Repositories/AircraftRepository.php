@@ -5,12 +5,18 @@ namespace App\Repositories;
 use App\Models\Aircraft;
 use Illuminate\Pagination\LengthAwarePaginator;
 use App\Repositories\AircraftRepositoryInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 class AircraftRepository implements AircraftRepositoryInterface
 {
-    public function all(): LengthAwarePaginator
+    public function all(): Collection
     {
-        return Aircraft::with(['operator', 'type', 'flights'])->latest()->paginate(10);
+        return Aircraft::with(['operator', 'type', 'flights'])->orderBy('name')->latest()->get();
+    }
+
+    public function allPaginated(): LengthAwarePaginator
+    {
+        return Aircraft::with(['operator', 'type', 'flights'])->orderBy('name')->latest()->paginate(10);
     }
 
     public function search(string $term): ?LengthAwarePaginator

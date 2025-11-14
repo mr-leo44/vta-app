@@ -27,6 +27,7 @@ Route::apiResource('aircraft-types', AircraftTypeController::class);
 
 Route::get('operators/{operator}/aircrafts', [AircraftController::class, 'byOperator'])->name('aircrafts.byOperator');
 Route::get('aircrafts/search', [AircraftController::class, 'search'])->name('aircrafts.search');
+Route::get('aircrafts/all', [AircraftController::class, 'all'])->name('aircrafts.all');
 Route::apiResource('aircrafts', AircraftController::class);
 
 Route::apiResource('flight-justifications', FlightJustificationController::class);

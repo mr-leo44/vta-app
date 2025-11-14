@@ -29,10 +29,28 @@ class AircraftController extends Controller
      * @response 200 OK
      * @responseContent json
      */
-    public function index()
+    public function all()
     {
         // Retrieve all aircrafts
         $aircrafts = $this->service->getAll();
+
+        // Return the response
+        return AircraftResource::collection($aircrafts);
+    }
+
+    /**
+     * Get all paginated aircrafts.
+     *
+     * Retrieves all aircrafts from the database.
+     *
+     * @return \Illuminate\Http\JsonResponse
+     * @response 200 OK
+     * @responseContent json
+     */
+    public function index()
+    {
+        // Retrieve all paginated aircrafts
+        $aircrafts = $this->service->getAllPaginated();
 
         // Return the response
         return AircraftResource::collection($aircrafts);

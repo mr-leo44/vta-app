@@ -27,6 +27,15 @@ class OperatorController extends Controller
      */
     public function index()
     {
+        $operators = $this->service->getAllPaginated();
+        return OperatorResource::collection($operators);
+    }
+
+     /**
+     * Display all operators.
+     */
+    public function all()
+    {
         $operators = $this->service->getAll();
         return OperatorResource::collection($operators);
     }

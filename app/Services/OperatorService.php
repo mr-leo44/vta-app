@@ -13,7 +13,12 @@ class OperatorService implements OperatorServiceInterface
         protected OperatorRepositoryInterface $repository
     ) {}
 
-    public function getAll(): LengthAwarePaginator
+    public function getAllPaginated(): LengthAwarePaginator
+    {
+        return $this->repository->allPaginated();
+    }
+
+    public function getAll(): Collection
     {
         return $this->repository->all();
     }

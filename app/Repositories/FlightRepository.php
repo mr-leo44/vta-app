@@ -12,7 +12,7 @@ class FlightRepository implements FlightRepositoryInterface
 {
     public function all(array $filters = [])
     {
-        return Flight::with('statistic')
+        return Flight::with(['statistic', 'operator', 'aircraft'])
             ->when($filters['operator_id'] ?? null, fn(Builder $q, $v) => $q->where('operator_id', $v))
             ->when($filters['aircraft_id'] ?? null, fn(Builder $q, $v) => $q->where('aircraft_id', $v))
             ->when($filters['flight_regime'] ?? null, fn(Builder $q, $v) => $q->where('flight_regime', $v))
@@ -34,7 +34,7 @@ class FlightRepository implements FlightRepositoryInterface
 
     public function find(int $id): ?Flight
     {
-        return Flight::with('statistic')->find($id);
+        return Flight::with(['statistic', 'operator', 'aircraft'])->find($id);
     }
 
     public function update(Flight $flight, array $data): Flight

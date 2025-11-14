@@ -9,7 +9,7 @@ class AircraftTypeRepository implements AircraftTypeRepositoryInterface
 {
     public function all(): Collection
     {
-        return AircraftType::latest()->get();
+        return AircraftType::orderBy('name')->latest()->get();
     }
 
     public function find(string $query): ?AircraftType

@@ -13,8 +13,7 @@ class AuthService implements AuthServiceInterface
     public function __construct(
         protected UserRepositoryInterface $users,
         protected HashManager $hash
-    ) {
-    }
+    ) {}
 
     public function authenticate(string $username, string $password): ?array
     {
@@ -28,7 +27,7 @@ class AuthService implements AuthServiceInterface
         }
 
         // create sanctum token
-        $token = $user->createToken('api-token')->plainTextToken;
+        $token = $user->createToken('vta-app-auth-token')->plainTextToken;
 
         return [
             'user' => $user,
@@ -38,14 +37,6 @@ class AuthService implements AuthServiceInterface
 
     public function logout(User $user): bool
     {
-        // If the request user has a current access token, delete it.
-        $token = $user->currentAccessToken();
-
-        if (! $token) {
-            return false;
-        }
-
-        // Use the tokens relation to delete by id to satisfy static analysis
-        return (bool) $user->tokens()->where('id', $token->id)->delete();
+        return (bool) $user->tokens()->delete();
     }
 }

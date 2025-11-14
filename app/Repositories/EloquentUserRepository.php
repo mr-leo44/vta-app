@@ -13,8 +13,7 @@ class EloquentUserRepository implements UserRepositoryInterface
 
     public function findByName(string $name): ?User
     {
-        // Alias for backward compatibility / alternative naming
-        return $this->findByUsername($name);
+        return User::where('name', $name)->first();
     }
 
     public function findById(int $id): ?User

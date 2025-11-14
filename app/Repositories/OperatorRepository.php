@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\Operator;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
@@ -12,13 +13,23 @@ use Illuminate\Pagination\LengthAwarePaginator;
 class OperatorRepository implements OperatorRepositoryInterface
 {
     /**
-     * Récupère tous les exploitants.
+     * Récupère tous les exploitants paginés.
      *
      * @return Illuminate\\Pagination\\LengthAwarePaginator
      */
-    public function all(): \Illuminate\Pagination\LengthAwarePaginator
+    public function allPaginated(): LengthAwarePaginator
     {
         return Operator::with('flights', 'aircrafts')->orderBy('name')->latest()->paginate(10);
+    }
+
+    /**
+     * Récupère tous les exploitants sans pagination.
+     *
+     * @return Illuminate\\Pagination\\LengthAwarePaginator
+     */
+    public function all(): Collection
+    {
+        return Operator::with('flights', 'aircrafts')->orderBy('name')->latest()->get();
     }
 
     /**

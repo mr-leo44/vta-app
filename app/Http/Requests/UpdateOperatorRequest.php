@@ -27,11 +27,11 @@ class UpdateOperatorRequest extends FormRequest
                 Rule::unique('operators', 'sigle')->ignore($operatorId)
             ],
             'iata_code' => [
-                'nullable', 'string', 'max:5',
+                'nullable', 'string', 'min:2', 'max:5',
                 Rule::unique('operators', 'iata_code')->ignore($operatorId)
             ],
             'icao_code' => [
-                'nullable', 'string', 'max:5',
+                'nullable', 'string', 'min:3', 'max:5',
                 Rule::unique('operators', 'icao_code')->ignore($operatorId)
             ],
             'country' => ['nullable', 'string', 'max:100'],
@@ -57,11 +57,13 @@ class UpdateOperatorRequest extends FormRequest
 
             // 🔹 iata_code
             'iata_code.string' => 'Le code IATA doit être une chaîne de caractères.',
+            'iata_code.min' => 'Le code IATA doit avoir au moins 2 caractères.',
             'iata_code.max' => 'Le code IATA ne peut pas dépasser 5 caractères.',
             'iata_code.unique' => 'Ce code IATA est déjà utilisé.',
 
             // 🔹 icao_code
             'icao_code.string' => 'Le code OACI doit être une chaîne de caractères.',
+            'icao_code.min' => 'Le code OACI doit avoir au moins 3 caractères.',
             'icao_code.max' => 'Le code OACI ne peut pas dépasser 5 caractères.',
             'icao_code.unique' => 'Ce code OACI est déjà utilisé.',
 

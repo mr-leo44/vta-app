@@ -16,8 +16,8 @@ class StoreOperatorRequest extends FormRequest
         return [
             'name' => 'required|string|max:255|unique:operators,name',
             'sigle' => 'required|string|max:10|unique:operators,sigle',
-            'iata_code' => 'nullable|string|max:5|unique:operators,iata_code',
-            'icao_code' => 'nullable|string|max:5|unique:operators,icao_code',
+            'iata_code' => 'nullable|string|min:2|max:5|unique:operators,iata_code',
+            'icao_code' => 'nullable|string|min:3|max:5|unique:operators,icao_code',
             'country' => 'nullable|string|max:100',
             'flight_type' => 'required|in:regular,non_regular',
             'flight_nature' => 'required|in:commercial,non_commercial',
@@ -41,11 +41,13 @@ class StoreOperatorRequest extends FormRequest
 
             // 🔹 iata_code
             'iata_code.string' => 'Le code IATA doit être une chaîne de caractères.',
+            'iata_code.min' => 'Le code IATA doit avoir au moins 2 caractères.',
             'iata_code.max' => 'Le code IATA ne peut pas dépasser 5 caractères.',
             'iata_code.unique' => 'Ce code IATA est déjà utilisé.',
 
             // 🔹 icao_code
             'icao_code.string' => 'Le code OACI doit être une chaîne de caractères.',
+            'icao_code.min' => 'Le code OACI doit avoir au moins 3 caractères.',
             'icao_code.max' => 'Le code OACI ne peut pas dépasser 5 caractères.',
             'icao_code.unique' => 'Ce code OACI est déjà utilisé.',
 

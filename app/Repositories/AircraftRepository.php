@@ -11,12 +11,12 @@ class AircraftRepository implements AircraftRepositoryInterface
 {
     public function all(): Collection
     {
-        return Aircraft::with(['operator', 'type', 'flights'])->orderBy('name')->latest()->get();
+        return Aircraft::with(['operator', 'type', 'flights'])->orderBy('immatriculation')->latest()->get();
     }
 
     public function allPaginated(): LengthAwarePaginator
     {
-        return Aircraft::with(['operator', 'type', 'flights'])->orderBy('name')->latest()->paginate(10);
+        return Aircraft::with(['operator', 'type', 'flights'])->orderBy('immatriculation')->latest()->paginate(10);
     }
 
     public function search(string $term): ?LengthAwarePaginator

@@ -78,6 +78,7 @@ class OperatorRepository implements OperatorRepositoryInterface
         return Operator::where('name', 'like', "%$term%")
             ->orWhere('iata_code', 'like', "%$term%")
             ->orWhere('icao_code', 'like', "%$term%")
+            ->orWhere('sigle', 'like', "%$term%")
             ->latest()->paginate(10);
             
     }

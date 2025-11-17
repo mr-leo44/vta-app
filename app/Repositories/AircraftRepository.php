@@ -21,7 +21,7 @@ class AircraftRepository implements AircraftRepositoryInterface
 
     public function search(string $term): ?LengthAwarePaginator
     {
-        return Aircraft::with(['operator', 'type'])
+        return Aircraft::with(['operator', 'type', 'flights'])
             ->where('immatriculation', 'like', "%$term%")
             ->orWhereHas('operator', function ($query) use ($term) {
                 $query->where('name', 'like', "%$term%")

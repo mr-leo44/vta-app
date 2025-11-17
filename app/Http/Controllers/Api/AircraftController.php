@@ -97,7 +97,8 @@ class AircraftController extends Controller
     public function show(Aircraft $aircraft)
     {
         // Return the aircraft as a JSON response
-        return new AircraftResource($aircraft);
+        $aircraftData = Aircraft::with(['flights', 'operator', 'type'])->find($aircraft['id']);
+        return new AircraftResource($aircraftData);
     }
 
     /**

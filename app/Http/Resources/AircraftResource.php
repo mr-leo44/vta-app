@@ -46,7 +46,7 @@ class AircraftResource extends JsonResource
                     // IATA code of the operator, if applicable
                     'iata_code' => $this->operator->iata_code ?? null, 
                    // ICAO code of the operator, if applicable
-                    'icao_code' => $this->operator->icao_code ?? null,
+                    'icao_code' => $this->operator->qicao_code ?? null,
                 ];
             }),
             // Flights of the aircraft

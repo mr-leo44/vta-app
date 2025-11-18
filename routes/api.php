@@ -22,6 +22,7 @@ Route::get('operators/search', [OperatorController::class, 'search'])->name('ope
 Route::apiResource('operators', OperatorController::class);
 
 Route::get('aircraft-types/find/{query}', [AircraftTypeController::class, 'find'])->name('aircraft-types.find');
+Route::get('aircraft-types/all', [AircraftTypeController::class, 'all'])->name('aircraft-types.all');
 Route::apiResource('aircraft-types', AircraftTypeController::class);
 
 

@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers\Api;
 
-use App\Models\Aircraft;
 use App\Helpers\ApiResponse;
 use App\Models\AircraftType;
 use Illuminate\Http\Request;
@@ -56,32 +55,27 @@ class AircraftTypeController extends Controller
     /**
      * Store a new aircraft type
      *
+     * Retrieves the request data, validates it, and stores a new aircraft type in the database.
+     * Returns a JSON response containing the newly created aircraft type.
+     *
      * @api {post} /aircraft-types
      * @apiName Store a new aircraft type
      * @apiGroup AircraftTypes
      * @apiParam {string} name The name of the aircraft type
      * @apiParam {string} sigle The sigle of the aircraft type
      * @apiSuccessResponse {json} The newly created aircraft type
+     * @response 201 Created
+     * @responseContent json
      */
     public function store(Request $request)
     {
-        /**
-         * Validate the request data
-         *
-         * @param Request $request The HTTP request
-         * @return array The validated data
-         */
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:aircraft_types,name',
             'sigle' => 'required|string|max:10|unique:aircraft_types,sigle',
         ]);
-        /**
-         * Store the aircraft type
-         *
-         * @param array $validated The validated data
-         * @return \Illuminate\Http\JsonResponse The newly created aircraft type
-         */
-        return AircraftTypeResource::collection($this->service->store($validated), 201);
+
+        $type = $this->service->store($validated);
+        return new AircraftTypeResource($type);
     }
 
     /**
@@ -100,36 +94,29 @@ class AircraftTypeController extends Controller
     }
 
     /**
-     * Update an aircraft type
+     * Update an existing aircraft type.
      *
-     * @api {put} /aircraft-types/{aircraft-type}
+     * This endpoint updates an existing aircraft type in the database.
+     *
+     * @api {put} /aircraft-types/{aircraft}
      * @apiName Update an aircraft type
-     * @apiGroup AircraftTypes
-     * @apiParam {int} aircraft-type The ID of the aircraft type
+     * @apiGroup Aircrafts
      * @apiParam {string} name The name of the aircraft type
-     * @apiParam {string} sigle The sigle of the aircraft type
+     * @apiParam {string} sigle The psigle of the aircraft type
      * @apiSuccessResponse {json} The updated aircraft type
+     * @response 200 OK
+     * @responseContent json
      */
     public function update(Request $request, AircraftType $aircraftType)
     {
-        /**
-         * Validate the request data
-         *
-         * @param Request $request The HTTP request
-         * @return array The validated data
-         */
+
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255|unique:aircraft_types,name,' . $aircraftType->id,
             'sigle' => 'sometimes|required|string|max:10|unique:aircraft_types,sigle,' . $aircraftType->id,
         ]);
 
-        /**
-         * Update the aircraft type
-         *
-         * @param array $validated The validated data
-         * @return \Illuminate\Http\JsonResponse The updated aircraft type
-         */
-        return AircraftTypeResource::collection($this->service->update($aircraftType, $validated));
+        $type = $this->service->update($aircraftType, $validated);
+        return new AircraftTypeResource($type);
     }
 
     /**

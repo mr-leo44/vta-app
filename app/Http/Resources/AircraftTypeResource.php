@@ -23,6 +23,8 @@ class AircraftTypeResource extends JsonResource
             'sigle' => $this->sigle,
             // aircrafts
             'aircrafts' => $this->whenLoaded('aircrafts'),
+            'created_at' => $this->created_at,
+            'updated_at' => $this->updated_at,
         ];
     }
 }

@@ -27,10 +27,56 @@ class FlightStoreRequest extends FormRequest
             'aircraft_id' => 'required|exists:aircrafts,id',
             'departure' => 'required|array',
             'arrival' => 'required|array',
-            'departure_time' => 'required|date',
-            'arrival_time' => 'required|date|after:departure_time',
+            'departure_time' => 'required|date|after:arrival_time',
+            'arrival_time' => 'required|date',
+            'flight_type' => 'sometimes|in:regular,non_regular',
+            'flight_nature' => 'sometimes|in:commercial,non_commercial',
+            'flight_regime' => 'sometimes|in:domestic,international',
+            'status' => 'sometimes|in:qrf,prevu,atteri,annule,detourne',
             'remarks' => 'nullable|string',
             'statistics' => 'nullable|array',
+        ];
+    }
+
+    /**
+     * Get the validation messages that apply to the rules.
+     *
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            // Flight number
+            'flight_number.required' => 'Le numero de vol est requis.',
+            'flight_number.string' => 'Le numero de vol doit être une chaîne de caractères.',
+            'flight_number.unique' => 'Ce numero de vol est déjà utilisé par un autre vol.',
+
+            // Departure
+            'departure.required' => 'Le lieu de depart est requis',
+
+            // Arrival
+            'arrival.required' => 'Le lieu d\'arrivée est requis',
+
+            // Departure time
+            'departure_time.required' => 'L\'heure de départ est requise.',
+            'departure_time.date' => 'L\'heure de départ doit être une date valide.',
+            'departure_time.after' => 'L\'heure de départ doit être postérieure à l\'heure d\'arrivée.',
+
+            // Arrival time
+            'arrival_time.required' => 'L\'heure d\'arrivée est requise.',
+            'arrival_time.date' => 'L\'heure d\'arrivée doit être une date valide.',
+
+            // Flight type
+            'flight_type.in' => 'Le type de vol doit être "regular" ou "non_regular".',
+
+            // Flight nature
+            'flight_nature.in' => 'La nature du vol doit être "commercial" ou "non_commercial".',
+
+            // Flight regime
+            'flight_regime.in' => 'Le régime de vol doit être "domestic" ou "international".',
+
+            // Status
+            'status.in' => 'Le statut du vol doit être parmi: qrf, prevu, atteri, annule, detourne.',
         ];
     }
 }

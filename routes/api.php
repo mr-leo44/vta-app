@@ -8,11 +8,24 @@ use App\Http\Controllers\Api\FlightController;
 use App\Http\Controllers\Api\AircraftController;
 use App\Http\Controllers\Api\OperatorController;
 use App\Http\Controllers\Api\AircraftTypeController;
+use App\Http\Controllers\Api\TraficReportController;
 use App\Http\Controllers\Api\FlightJustificationController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
+
+// Route JSON
+Route::get('/trafic-report/{month?}/{year?}/{regime?}', [
+    TraficReportController::class, 
+    'monthlyReport'
+]);
+
+// Route Export Excel
+Route::get('/trafic-report/export/{month?}/{year?}/{regime?}', [
+    TraficReportController::class, 
+    'exportMonthlyReport'
+]);
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');;
 

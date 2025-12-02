@@ -21,20 +21,30 @@ class TraficReportController extends Controller
     public function monthlyReport($month = '11', $year = '2025', $regime = 'international')
     {
         $days = $this->getDaysOfMonth($month, $year);
-        
-        // Récupérer les opérateurs une seule fois
-        $commercialOps = $this->getOperators(FlightNatureEnum::COMMERCIAL, $regime);
-        $nonCommercialOps = $this->getOperators(FlightNatureEnum::NON_COMMERCIAL, $regime);
-        
+
+        // Pour PAX : exclure les opérateurs cargo-only
+        $commercialOpsPax = $this->getOperators(FlightNatureEnum::COMMERCIAL, $regime, true);
+        $nonCommercialOpsPax = $this->getOperators(FlightNatureEnum::NON_COMMERCIAL, $regime, true);
+
+        // Pour fret et excédents : tous les opérateurs
+        $commercialOps = $this->getOperators(FlightNatureEnum::COMMERCIAL, $regime, false);
+        $nonCommercialOps = $this->getOperators(FlightNatureEnum::NON_COMMERCIAL, $regime, false);
+
         return [
-            'pax' => $this->buildSheetData($days, $regime, 'pax', $commercialOps, $nonCommercialOps),
+            'pax' => $this->buildSheetData($days, $regime, 'pax', $commercialOpsPax, $nonCommercialOpsPax),
             'fret_depart' => $this->buildSheetData($days, $regime, 'fret_depart', $commercialOps, $nonCommercialOps),
             'fret_arrivee' => $this->buildSheetData($days, $regime, 'fret_arrivee', $commercialOps, $nonCommercialOps),
             'exced_depart' => $this->buildSheetData($days, $regime, 'exced_depart', $commercialOps, $nonCommercialOps),
             'exced_arrivee' => $this->buildSheetData($days, $regime, 'exced_arrivee', $commercialOps, $nonCommercialOps),
             'operators' => [
-                'commercial' => $commercialOps->pluck('sigle')->toArray(),
-                'non_commercial' => $nonCommercialOps->pluck('sigle')->toArray(),
+                'pax' => [
+                    'commercial' => $commercialOpsPax->pluck('sigle')->toArray(),
+                    'non_commercial' => $nonCommercialOpsPax->pluck('sigle')->toArray(),
+                ],
+                'fret' => [
+                    'commercial' => $commercialOps->pluck('sigle')->toArray(),
+                    'non_commercial' => $nonCommercialOps->pluck('sigle')->toArray(),
+                ]
             ]
         ];
     }
@@ -45,89 +55,107 @@ class TraficReportController extends Controller
     private function buildSheetData($days, $regime, $metric, $commercialOps, $nonCommercialOps)
     {
         $rows = [];
-        
+
         foreach ($days as $day) {
             $row = [
                 'date' => Carbon::parse($day)->format('d/m/Y'),
             ];
-            
+
             // === COMMERCIAL OPERATORS ===
             foreach ($commercialOps as $op) {
                 $row[$op->sigle] = $this->getMetricValue(
-                    $day, 
-                    $regime, 
-                    $op->id, 
-                    FlightNatureEnum::COMMERCIAL, 
-                    FlightTypeEnum::REGULAR, 
+                    $day,
+                    $regime,
+                    $op->id,
+                    FlightNatureEnum::COMMERCIAL,
+                    FlightTypeEnum::REGULAR,
                     $metric
                 );
             }
-            
+
             // AUTRES = Commerciaux non-réguliers
             $row['AUTRES'] = $this->getMetricValue(
-                $day, 
-                $regime, 
-                null, 
-                FlightNatureEnum::COMMERCIAL, 
-                FlightTypeEnum::NON_REGULAR, 
+                $day,
+                $regime,
+                null,
+                FlightNatureEnum::COMMERCIAL,
+                FlightTypeEnum::NON_REGULAR,
                 $metric
             );
-            
+
             // === NON-COMMERCIAL OPERATORS ===
             foreach ($nonCommercialOps as $op) {
                 $row[$op->sigle] = $this->getMetricValue(
-                    $day, 
-                    $regime, 
-                    $op->id, 
-                    FlightNatureEnum::NON_COMMERCIAL, 
-                    FlightTypeEnum::REGULAR, 
+                    $day,
+                    $regime,
+                    $op->id,
+                    FlightNatureEnum::NON_COMMERCIAL,
+                    FlightTypeEnum::REGULAR,
                     $metric
                 );
             }
-            
+
             // AUTRES_NC = Non-Commerciaux non-réguliers
             $row['AUTRES_NC'] = $this->getMetricValue(
-                $day, 
-                $regime, 
-                null, 
-                FlightNatureEnum::NON_COMMERCIAL, 
-                FlightTypeEnum::NON_REGULAR, 
+                $day,
+                $regime,
+                null,
+                FlightNatureEnum::NON_COMMERCIAL,
+                FlightTypeEnum::NON_REGULAR,
                 $metric
             );
-            
+
             $rows[] = $row;
         }
-        
+
         return $rows;
     }
 
     /**
      * Récupère les opérateurs ayant des vols pour un régime donné
      */
-    private function getOperators($nature, $regime)
+    private function getOperators($nature, $regime, $excludeCargoOnly = false)
     {
-        return Operator::where('flight_nature', $nature)
-            ->whereHas('flights', fn($q) => $q
-                ->where('flight_regime', $regime)
-                ->where('status', FlightStatusEnum::LANDED)
-            )
-            ->orderBy('sigle')
-            ->get();
-    }
+        $query = Operator::where('flight_nature', $nature)
+            ->whereHas(
+                'flights',
+                fn($q) => $q
+                    ->where('flight_regime', $regime)
+                    ->where('status', FlightStatusEnum::LANDED)
+            );
 
+        // Pour le sheet PAX : exclure les opérateurs qui n'ont QUE des vols cargo
+        if ($excludeCargoOnly) {
+            $query->whereHas('flights', function ($q) use ($regime) {
+                $q->where('flight_regime', $regime)
+                    ->where('status', FlightStatusEnum::LANDED)
+                    ->whereHas('statistic', function ($sq) {
+                        $sq->where(function ($s) {
+                            $s->where('passengers_count', '>', 0)
+                                ->orWhere('pax_bus', '>', 0)
+                                ->orWhere('go_pass_count', '>', 0);
+                        });
+                    });
+            });
+        }
+
+        return $query->orderBy('sigle')->get();
+    }
+    
     /**
      * Récupère la valeur d'une métrique spécifique
      */
     private function getMetricValue($day, $regime, $operatorId, $nature, $type, $metric)
     {
-        $stats = $this->sumFlightStats($day, $regime, $operatorId, $nature, $type);
+        // Passer le paramètre $metric à sumFlightStats
+        $stats = $this->sumFlightStats($day, $regime, $operatorId, $nature, $type, $metric);
         return $stats[$metric] ?? 0;
     }
 
     /**
      * Somme les statistiques des vols pour un jour donné
      */
-    private function sumFlightStats($day, $regime, $operatorId, $natureEnum, $typeEnum)
+    private function sumFlightStats($day, $regime, $operatorId, $natureEnum, $typeEnum, $metric = null)
     {
         $query = Flight::with('statistic')
             ->where('flight_regime', $regime)
@@ -171,10 +199,11 @@ class TraficReportController extends Controller
     {
         $reportData = $this->monthlyReport($month, $year, $regime);
         $monthName = $this->getMonth($month);
+        $formatted_regime = $regime === "domestic" ? 'NATIONAL' : 'INTERNATIONAL';
 
         $fileName = sprintf(
             'TRAFIC_%s_%s_%s.xlsx',
-            strtoupper($regime),
+            strtoupper($formatted_regime),
             strtoupper($monthName),
             strtoupper($year)
         );
@@ -197,7 +226,7 @@ class TraficReportController extends Controller
         for ($date = $start->copy(); $date->lte($end); $date->addDay()) {
             $dates[] = $date->format('Y-m-d');
         }
-        
+
         return $dates;
     }
 

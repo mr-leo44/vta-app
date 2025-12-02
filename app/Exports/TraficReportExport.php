@@ -21,64 +21,64 @@ class TraficReportExport implements WithMultipleSheets
 
     public function sheets(): array
     {
-        $regime = strtoupper($this->regime);
+        $regime = $this->regime === "domestic" ? 'NATIONAL' : 'INTERNATIONAL';
         $selectedMonth = $this->getMonth();
         $year = $this->year;
-        $short_regime = $regime === 'DOMESTIC' ? 'NAT' : 'INT';
-        
+        $short_regime = $regime === 'NATIONAL' ? 'NAT' : 'INT';
+
         if ($this->regime === "international") {
             return [
                 new TraficStatSheet(
                     "PAX $short_regime",
                     "PASSAGERS VOLS $regime $selectedMonth $year",
                     $this->reportData['pax'],
-                    $this->reportData['operators']
+                    $this->reportData['operators']['pax']
                 ),
                 new TraficStatSheet(
                     "FRET $short_regime DEPART",
                     "FRET $regime DEPART $selectedMonth $year",
                     $this->reportData['fret_depart'],
-                    $this->reportData['operators']
+                    $this->reportData['operators']['fret']
                 ),
                 new TraficStatSheet(
                     "FRET $short_regime ARRIVEE",
                     "FRET $regime ARRIVEE $selectedMonth $year",
                     $this->reportData['fret_arrivee'],
-                    $this->reportData['operators']
+                    $this->reportData['operators']['fret']
                 ),
                 new TraficStatSheet(
                     "EXCED FRET $short_regime DEPART",
                     "EXCEDENT FRET $regime DEPART $selectedMonth $year",
                     $this->reportData['exced_depart'],
-                    $this->reportData['operators']
+                    $this->reportData['operators']['fret']
                 ),
                 new TraficStatSheet(
                     "EXCED FRET $short_regime ARRIVEE",
                     "EXCEDENT FRET $regime ARRIVEE $selectedMonth $year",
                     $this->reportData['exced_arrivee'],
-                    $this->reportData['operators']
+                    $this->reportData['operators']['fret']
                 )
             ];
         }
-        
+
         return [
             new TraficStatSheet(
                 "PAX $short_regime",
                 "PASSAGERS VOLS $regime $selectedMonth $year",
                 $this->reportData['pax'],
-                $this->reportData['operators']
+                $this->reportData['operators']['pax']
             ),
             new TraficStatSheet(
                 "FRET $short_regime DEPART",
                 "FRET $regime DEPART $selectedMonth $year",
                 $this->reportData['fret_depart'],
-                $this->reportData['operators']
+                $this->reportData['operators']['fret']
             ),
             new TraficStatSheet(
                 "EXCED FRET $short_regime DEPART",
                 "EXCEDENT FRET $regime DEPART $selectedMonth $year",
                 $this->reportData['exced_depart'],
-                $this->reportData['operators']
+                $this->reportData['operators']['fret']
             )
         ];
     }

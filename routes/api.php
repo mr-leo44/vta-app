@@ -16,12 +16,23 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 // Route JSON
+Route::get('/trafic-report/{year?}/{regime?}', [
+    TraficReportController::class, 
+    'yearlyReport'
+]);
+
+Route::get('/trafic-report/export/{year?}/{regime?}', [
+    TraficReportController::class, 
+    'exportYearlyReport'
+]);
+
 Route::get('/trafic-report/{month?}/{year?}/{regime?}', [
     TraficReportController::class, 
     'monthlyReport'
 ]);
 
 // Route Export Excel
+
 Route::get('/trafic-report/export/{month?}/{year?}/{regime?}', [
     TraficReportController::class, 
     'exportMonthlyReport'

@@ -81,4 +81,25 @@ class FlightController extends Controller
         $this->flightService->delete($flight);
         return response()->json(['message' => 'Flight deleted successfully']);
     }
+
+    /**
+     * Get all flights for a given date
+     *
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function flightsByDate(Request $request)
+    {
+        // Get the date from the request query
+        // Format: YYYY-MM-DD
+        $date = $request->query('date');
+        // Get all flights for the given date
+        // Latest flights first
+        $flights = Flight::with(['statistic'])->whereDate('departure_time', $date)
+            ->orderBy('departure_time', 'asc')
+            ->get();
+
+        // Return the flights as JSON
+        return FlightResource::collection($flights);
+    }
 }

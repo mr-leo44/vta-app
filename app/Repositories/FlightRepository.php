@@ -10,7 +10,14 @@ use App\Repositories\FlightRepositoryInterface;
 
 class FlightRepository implements FlightRepositoryInterface
 {
-    public function all(array $filters = [])
+
+    public function all(): Collection
+    {
+        return Flight::with(['statistic', 'operator', 'aircraft'])
+            ->latest()
+            ->get();
+    }
+    public function allPaginated(array $filters = [])
     {
         return Flight::with(['statistic', 'operator', 'aircraft'])
             ->when($filters['operator_id'] ?? null, fn(Builder $q, $v) => $q->where('operator_id', $v))

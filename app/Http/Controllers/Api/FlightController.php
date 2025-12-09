@@ -25,12 +25,33 @@ class FlightController extends Controller
     /**
      * Get all flights
      * 
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function all()
+    {
+        // Get all flights
+        $flights = $this->flightService->list();
+
+        // Return the flights as a JSON response
+        return FlightResource::collection($flights);
+    }
+
+    /**
+     * Get all flights with optional filters
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    /**
      * @param Request $request
      * @return \Illuminate\Http\JsonResponse
      */
     public function index(Request $request)
     {
-        $flights = $this->flightService->list($request->all());
+        // Get all flights with optional filters
+        $flights = $this->flightService->listPaginated($request->all());
+
+        // Return the flights as a JSON response
         return FlightResource::collection($flights);
     }
 

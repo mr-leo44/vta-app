@@ -2,14 +2,15 @@
 
 namespace App\Services;
 
+use App\Models\Flight;
+use App\Enums\FlightTypeEnum;
 use App\Enums\FlightNatureEnum;
 use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
-use App\Enums\FlightTypeEnum;
-use App\Models\Flight;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Support\Facades\DB;
 use App\Repositories\FlightRepository;
 use App\Repositories\FlightStatisticRepository;
-use Illuminate\Support\Facades\DB;
 
 class FlightService
 {
@@ -18,9 +19,13 @@ class FlightService
         private FlightStatisticRepository $flightStatRepo
     ) {}
 
-    public function list(array $filters)
+    public function list(): Collection
     {
-        return $this->flightRepo->all($filters);
+        return $this->flightRepo->all();
+    }
+    public function listPaginated(array $filters)
+    {
+        return $this->flightRepo->allPaginated($filters);
     }
 
     public function show(int $id): ?Flight

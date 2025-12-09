@@ -57,5 +57,6 @@ Route::get('aircrafts/all', [AircraftController::class, 'all'])->name('aircrafts
 Route::apiResource('aircrafts', AircraftController::class);
 
 Route::apiResource('flight-justifications', FlightJustificationController::class);
+Route::get('flights/all', [FlightController::class, 'all'])->name('flights.all');
 Route::get('/flights/daily', [FlightController::class, 'flightsByDate']);
 Route::apiResource('flights', FlightController::class);

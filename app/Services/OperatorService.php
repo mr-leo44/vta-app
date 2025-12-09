@@ -3,14 +3,20 @@
 namespace App\Services;
 
 use App\Models\Operator;
-use App\Repositories\OperatorRepositoryInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
+use App\Repositories\OperatorRepositoryInterface;
 
 class OperatorService implements OperatorServiceInterface
 {
     public function __construct(
         protected OperatorRepositoryInterface $repository
     ) {}
+
+    public function getAllPaginated(): LengthAwarePaginator
+    {
+        return $this->repository->allPaginated();
+    }
 
     public function getAll(): Collection
     {
@@ -32,7 +38,7 @@ class OperatorService implements OperatorServiceInterface
         return $this->repository->delete($operator);
     }
 
-    public function findByNameOrIata(string $term): ?Operator
+    public function findByNameOrIata(string $term): ?LengthAwarePaginator
     {
         return $this->repository->findByNameOrIata($term);
     }

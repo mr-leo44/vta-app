@@ -30,4 +30,18 @@ class UpdateAircraftRequest extends FormRequest
             'operator_id' => 'sometimes|required|exists:operators,id',
         ];
     }
+
+    public function messages(): array
+    {
+        return [
+            // 🔹 immatriculation
+            'immatriculation.required' => 'L\'immatriculation de l’aéronef est requis.',
+            'immatriculation.string' => 'L\'immatriculation doit être une chaîne de caractères.',
+            'immatriculation.unique' => 'Cette immatriculation est déjà utilisé par un autre aéronef.',
+
+            // 🔹 immatriculation
+            'pmad.required' => 'Le pmad de l’aéronef est requis.',
+            'pmad.integer' => 'Le pmad doit être un nombre entier.',
+        ];
+    }
 }

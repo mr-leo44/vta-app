@@ -4,6 +4,7 @@ namespace App\Repositories;
 
 use App\Models\Operator;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 /**
  * Repository pour la gestion des opérateurs.
@@ -12,13 +13,23 @@ use Illuminate\Database\Eloquent\Collection;
 class OperatorRepository implements OperatorRepositoryInterface
 {
     /**
-     * Récupère tous les exploitants.
+     * Récupère tous les exploitants paginés.
      *
-     * @return Collection
+     * @return Illuminate\\Pagination\\LengthAwarePaginator
+     */
+    public function allPaginated(): LengthAwarePaginator
+    {
+        return Operator::with('flights', 'aircrafts')->orderBy('name')->latest()->paginate(10);
+    }
+
+    /**
+     * Récupère tous les exploitants sans pagination.
+     *
+     * @return Illuminate\\Pagination\\LengthAwarePaginator
      */
     public function all(): Collection
     {
-        return Operator::orderBy('name')->get();
+        return Operator::with('flights', 'aircrafts')->orderBy('name')->latest()->get();
     }
 
     /**
@@ -60,12 +71,15 @@ class OperatorRepository implements OperatorRepositoryInterface
      * Recherche des opérateurs par nom ou code IATA.
      *
      * @param string $query
-     * @return Collection
+     * @return LengthAwarePaginator
      */
-    public function findByNameOrIata(string $term): ?Operator
+    public function findByNameOrIata(string $term): ?LengthAwarePaginator
     {
         return Operator::where('name', 'like', "%$term%")
             ->orWhere('iata_code', 'like', "%$term%")
-            ->first();
+            ->orWhere('icao_code', 'like', "%$term%")
+            ->orWhere('sigle', 'like', "%$term%")
+            ->latest()->paginate(10);
+            
     }
 }

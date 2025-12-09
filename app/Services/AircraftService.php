@@ -4,9 +4,10 @@ namespace App\Services;
 
 
 use App\Models\Aircraft;
-use Illuminate\Database\Eloquent\Collection;
 use App\Services\AircraftServiceInterface;
+use Illuminate\Pagination\LengthAwarePaginator;
 use App\Repositories\AircraftRepositoryInterface;
+use Illuminate\Database\Eloquent\Collection;
 
 class AircraftService implements AircraftServiceInterface
 {
@@ -17,20 +18,14 @@ class AircraftService implements AircraftServiceInterface
         return $this->repository->all();
     }
 
-    public function findByImmatriculation(string $immatriculation): ?Aircraft
+     public function getAllPaginated(): LengthAwarePaginator
     {
-        return $this->repository->findByImmatriculation($immatriculation);
+        return $this->repository->allPaginated();
     }
 
-    /**
-     * Returns all aircrafts that belong to the given operator.
-     *
-     * @param int $operatorId The ID of the operator.
-     * @return Collection The aircrafts belonging to the operator.
-     */
-    public function findByOperator(int $operatorId): Collection
+    public function search(string $term): ?LengthAwarePaginator
     {
-        return $this->repository->findByOperator($operatorId);
+        return $this->repository->search($term);
     }
     
     public function store(array $data): Aircraft
@@ -41,8 +36,8 @@ class AircraftService implements AircraftServiceInterface
     {
         return $this->repository->update($aircraft, $data);
     }
-    public function delete(Aircraft $aircraft): void
+    public function delete(Aircraft $aircraft): bool
     {
-        $this->repository->delete($aircraft);
+        return $this->repository->delete($aircraft);
     }
 }

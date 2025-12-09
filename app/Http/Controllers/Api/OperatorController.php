@@ -23,9 +23,18 @@ class OperatorController extends Controller
     ) {}
 
     /**
-     * Display all operators.
+     * Display all paginated operators.
      */
     public function index()
+    {
+        $operators = $this->service->getAllPaginated();
+        return OperatorResource::collection($operators);
+    }
+
+     /**
+     * Display all operators.
+     */
+    public function all()
     {
         $operators = $this->service->getAll();
         return OperatorResource::collection($operators);
@@ -45,7 +54,7 @@ class OperatorController extends Controller
      */
     public function show(Operator $operator)
     {
-        return new OperatorResource($operator);
+        return new OperatorResource($operator->load(['flights', 'aircrafts.type']));
     }
 
     /**
@@ -67,17 +76,16 @@ class OperatorController extends Controller
     }
 
     /**
-     * Find operator by name or IATA code.
+     * Find operators by name or IATA code.
      *
      * @queryParam term string required The search term (operator name or IATA code). Example: CAA
      */
     public function search(Request $request)
     {
         $term = $request->get('term');
-        // dd($term);
-        $operator = $this->service->findByNameOrIata($term);
-        return $operator
-            ? new OperatorResource($operator)
+        $operators = $this->service->findByNameOrIata($term);
+        return $operators
+            ? OperatorResource::collection($operators)
             : ApiResponse::error('Exploitant non trouvé', 404);
     }
 }

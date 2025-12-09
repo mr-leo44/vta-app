@@ -4,17 +4,23 @@ namespace App\Repositories;
 
 use App\Models\AircraftType;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class AircraftTypeRepository implements AircraftTypeRepositoryInterface
 {
     public function all(): Collection
     {
-        return AircraftType::latest()->get();
+        return AircraftType::with('aircrafts')->orderBy('name')->latest()->get();
     }
 
-    public function find(string $query): ?AircraftType
+    public function allPaginated(): LengthAwarePaginator
     {
-        return AircraftType::where('name', $query)->orWhere('sigle', $query)->first();
+        return AircraftType::with('aircrafts')->orderBy('name')->latest()->paginate();
+    }
+
+    public function find(string $query): LengthAwarePaginator
+    {
+        return AircraftType::with('aircrafts')->where('name', 'like', "%$query%")->orWhere('sigle', 'like', "%$query%")->latest()->paginate();
     }
 
     public function create(array $data): AircraftType

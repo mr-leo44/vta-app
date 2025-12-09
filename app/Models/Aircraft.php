@@ -2,9 +2,13 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Models\Flight;
+use App\Models\Operator;
+use App\Models\AircraftType;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 
 class Aircraft extends Model
 {
@@ -27,5 +31,10 @@ class Aircraft extends Model
     public function operator(): BelongsTo
     {
         return $this->belongsTo(Operator::class);
+    }
+
+    public function flights(): HasMany
+    {
+        return $this->hasMany(Flight::class);
     }
 }

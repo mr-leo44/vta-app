@@ -6,6 +6,7 @@ use App\Models\AircraftType;
 use App\Repositories\AircraftTypeRepositoryInterface;
 use App\Services\AircraftTypeServiceInterface;
 use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Pagination\LengthAwarePaginator;
 
 class AircraftTypeService implements AircraftTypeServiceInterface
 {
@@ -16,7 +17,12 @@ class AircraftTypeService implements AircraftTypeServiceInterface
         return $this->repository->all();
     }
 
-    public function find(string $query): ?AircraftType
+    public function getAllPaginated(): LengthAwarePaginator
+    {
+        return $this->repository->allPaginated();
+    }
+
+    public function find(string $query): LengthAwarePaginator
     {
         return $this->repository->find($query);
     }

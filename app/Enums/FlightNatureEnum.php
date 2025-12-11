@@ -5,13 +5,21 @@ namespace App\Enums;
 enum FlightNatureEnum: string
 {
     case COMMERCIAL = 'commercial';
-    case NON_COMMERCIAL = 'non_commercial';
+    case STATE = 'state';
+    case REQUISITION = 'requisition';
+    case TEST = 'test';
+    case AFREIGHTMENT = 'afreightment';
+    case HUMANITARE = 'humanitare';
 
     public function label(): string
     {
         return match($this) {
-            self::COMMERCIAL => 'Vol commercial',
-            self::NON_COMMERCIAL => 'Vol non commercial',
+            self::COMMERCIAL => 'Vol Commercial',
+            self::STATE => 'Vol d\'Etat',
+            self::REQUISITION => 'Vol de Requisition',
+            self::AFREIGHTMENT => 'Vol d\'affretement',
+            self::TEST => 'Vol de test',
+            self::HUMANITARE => 'Vol Humanitaire',
         };
     }
 

@@ -21,6 +21,7 @@ class AircraftTypeResource extends JsonResource
             'name' => $this->name,
             // ICAO code of the aircraft type, if applicable
             'sigle' => $this->sigle,
+            'default_pmad' => $this->default_pmad,
             // aircrafts
             'aircrafts' => $this->whenLoaded('aircrafts'),
             'created_at' => $this->created_at,

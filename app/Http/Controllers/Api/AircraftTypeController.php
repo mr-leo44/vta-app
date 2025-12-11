@@ -72,6 +72,7 @@ class AircraftTypeController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:aircraft_types,name',
             'sigle' => 'required|string|max:10|unique:aircraft_types,sigle',
+            'default_pmad' => 'required|integer',
         ]);
 
         $type = $this->service->store($validated);
@@ -113,6 +114,7 @@ class AircraftTypeController extends Controller
         $validated = $request->validate([
             'name' => 'sometimes|required|string|max:255|unique:aircraft_types,name,' . $aircraftType->id,
             'sigle' => 'sometimes|required|string|max:10|unique:aircraft_types,sigle,' . $aircraftType->id,
+            'default_pmad' => 'sometimes|required|integer',
         ]);
 
         $type = $this->service->update($aircraftType, $validated);

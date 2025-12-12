@@ -20,7 +20,6 @@ class StoreOperatorRequest extends FormRequest
             'icao_code' => 'nullable|string|min:3|max:5|unique:operators,icao_code',
             'country' => 'nullable|string|max:100',
             'flight_type' => 'required|in:regular,non_regular',
-            'flight_nature' => 'required|in:commercial,non_commercial',
         ];
     }
 
@@ -58,10 +57,6 @@ class StoreOperatorRequest extends FormRequest
             // 🔹 flight_type
             'flight_type.required' => 'Le type de vol est requis.',
             'flight_type.in' => 'Le type de vol doit être “regular” ou “non_regular”.',
-
-            // 🔹 flight_nature
-            'flight_nature.required' => 'La nature du vol est requise.',
-            'flight_nature.in' => 'La nature du vol doit être “commercial” ou “non_commercial”.',
         ];
     }
 }

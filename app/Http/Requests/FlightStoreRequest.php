@@ -30,7 +30,7 @@ class FlightStoreRequest extends FormRequest
             'departure_time' => 'required|date|after:arrival_time',
             'arrival_time' => 'required|date',
             'flight_type' => 'sometimes|in:regular,non_regular',
-            'flight_nature' => 'sometimes|in:commercial,non_commercial',
+            'flight_nature' => 'sometimes|in:commercial,state,test,humanitare,afreightment,requisition',
             'flight_regime' => 'sometimes|in:domestic,international',
             'status' => 'sometimes|in:qrf,prevu,atteri,annule,detourne',
             'remarks' => 'nullable|string',
@@ -70,7 +70,7 @@ class FlightStoreRequest extends FormRequest
             'flight_type.in' => 'Le type de vol doit être "regular" ou "non_regular".',
 
             // Flight nature
-            'flight_nature.in' => 'La nature du vol doit être "commercial" ou "non_commercial".',
+            'flight_nature.in' => 'La nature du vol doit être "commercial" ou "non_commercial(d\'Etat, Test, Humanitaire, Affrètement, Requisition)"',
 
             // Flight regime
             'flight_regime.in' => 'Le régime de vol doit être "domestic" ou "international".',

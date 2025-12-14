@@ -6,7 +6,7 @@ enum FlightStatusEnum: string
 {
     case QRF = 'qrf';
     case SCHEDULED = 'prevu';
-    case LANDED = 'atteri';
+    case DEPARTED = 'embarque';
     case CANCELLED = 'annule';
     case DIVERTED = 'detourne';
 
@@ -15,7 +15,7 @@ enum FlightStatusEnum: string
         return match($this) {
             self::QRF => 'QRF',
             self::SCHEDULED => 'Vol prévu',
-            self::LANDED => 'Vol atterri',
+            self::DEPARTED => 'Vol atterri',
             self::CANCELLED => 'Vol annulé',
             self::DIVERTED => 'Vol détourné',
         };

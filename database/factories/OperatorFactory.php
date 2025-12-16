@@ -20,7 +20,7 @@ class OperatorFactory extends Factory
     public function definition(): array
     {
         $types = ['regular', 'non_regular'];
-        $natures = ['commercial', 'non_commercial'];
+        $natures = ['commercial', 'state', 'requisition', 'test', 'afreightment', 'humanitare'];
 
         return [
             'name' => $this->faker->company(),

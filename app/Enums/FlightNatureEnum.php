@@ -10,6 +10,11 @@ enum FlightNatureEnum: string
     case TEST = 'test';
     case AFREIGHTMENT = 'afreightment';
     case HUMANITARE = 'humanitare';
+    case STATE = 'state';
+    case REQUISITION = 'requisition';
+    case TEST = 'test';
+    case AFREIGHTMENT = 'afreightment';
+    case HUMANITARE = 'humanitare';
 
     public function label(): string
     {

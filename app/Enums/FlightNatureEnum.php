@@ -15,12 +15,41 @@ enum FlightNatureEnum: string
     {
         return match($this) {
             self::COMMERCIAL => 'Vol Commercial',
-            self::STATE => 'Vol d\'Etat',
-            self::REQUISITION => 'Vol de Requisition',
-            self::AFREIGHTMENT => 'Vol d\'affretement',
-            self::TEST => 'Vol de test',
+            self::STATE => 'Vol d\'État',
+            self::REQUISITION => 'Vol de Réquisition',
+            self::AFREIGHTMENT => 'Vol d\'Affrètement',
+            self::TEST => 'Vol de Test',
             self::HUMANITARE => 'Vol Humanitaire',
         };
+    }
+
+    public function isCommercial(): bool
+    {
+        return $this === self::COMMERCIAL;
+    }
+
+    public function isNonCommercial(): bool
+    {
+        return !$this->isCommercial();
+    }
+
+    /**
+     * Get all commercial cases
+     */
+    public static function commercial(): array
+    {
+        return [self::COMMERCIAL];
+    }
+
+    /**
+     * Get all non-commercial cases
+     */
+    public static function nonCommercial(): array
+    {
+        return array_filter(
+            self::cases(),
+            fn($case) => $case->isNonCommercial()
+        );
     }
 
     public static function labels(): array

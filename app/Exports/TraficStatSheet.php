@@ -66,7 +66,7 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                 ["BUREAU TRAFIC"],
                 ["SERVICE VTA"],
                 ["RVA AERO/N'DJILI"],
-                array_fill(0, $cols, ""),
+                [""],
                 [$this->title]
             ] as $line
         ) {
@@ -131,27 +131,14 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                 $highestCol = $s->getHighestColumn();
                 $highestColIndex = Coordinate::columnIndexFromString($highestCol);
 
-                // ✅ TITRES : Lignes 1-3 alignées à gauche, ligne 4 centrée
-                // Ligne 1 : BUREAU TRAFIC
-                $s->mergeCells("A1:{$highestCol}1");
-                $s->getStyle("A1")->getFont()->setBold(false)->setSize(12);
-                $s->getStyle("A1")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_LEFT) // ✅ À gauche
-                    ->setVertical(Alignment::VERTICAL_CENTER);
-
-                // Ligne 2 : SERVICE VTA
-                $s->mergeCells("A2:{$highestCol}2");
-                $s->getStyle("A2")->getFont()->setBold(false)->setSize(12);
-                $s->getStyle("A2")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_LEFT) // ✅ À gauche
-                    ->setVertical(Alignment::VERTICAL_CENTER);
-
-                // Ligne 3 : RVA AERO/N'DJILI
-                $s->mergeCells("A3:{$highestCol}3");
-                $s->getStyle("A3")->getFont()->setBold(false)->setSize(12);
-                $s->getStyle("A3")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_LEFT) // ✅ À gauche
-                    ->setVertical(Alignment::VERTICAL_CENTER);
+                // Lignes 1-3 : Alignées à gauche
+                for ($row = 1; $row <= 3; $row++) {
+                    $s->mergeCells("A{$row}:{$highestCol}{$row}");
+                    $s->getStyle("A{$row}")->getFont()->setBold(false)->setSize(12);
+                    $s->getStyle("A{$row}")->getAlignment()
+                        ->setHorizontal(Alignment::HORIZONTAL_LEFT)
+                        ->setVertical(Alignment::VERTICAL_CENTER);
+                }
 
                 // Ligne 5 : TITRE PRINCIPAL (CENTRÉ)
                 $s->mergeCells("A5:{$highestCol}5");

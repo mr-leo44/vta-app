@@ -7,6 +7,7 @@ use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
@@ -56,7 +57,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
             ["SERVICE VTA"],
             ["BUREAU PAX BUS"],
             ["RVA AERO/N'DJILI"],
-            array_fill(0, $cols, ""),
+            [""],
             [$this->title]
         ] as $line) {
             $data[] = array_pad($line, $cols, "");
@@ -88,15 +89,15 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
         $data[] = $totRow;
 
         // LIGNES VIDES AVANT SIGNATURE
-        $data[] = array_fill(0, $cols, "");
+        $data[] = array_fill(0, $cols, '');
 
         // SIGNATURE
-        $signatureLine1 = array_fill(0, $cols, "");
-        $signatureLine1[$cols - 3] = "LE CHEF DE BUREAU PAX BUS ai";
+        $signatureLine1 = array_fill(0, $cols, '');
+        $signatureLine1[$cols - 4] = 'LE CHEF DE BUREAU PAX BUS ai';
         $data[] = $signatureLine1;
 
-        $signatureLine2 = array_fill(0, $cols, "");
-        $signatureLine2[$cols - 3] = "FREDDY KALEMA TABU";
+        $signatureLine2 = array_fill(0, $cols, '');
+        $signatureLine2[$cols - 4] = 'FREDDY KALEMA TABU';
         $data[] = $signatureLine2;
 
         return $data;
@@ -126,7 +127,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 $highestCol = $s->getHighestColumn();
                 $highestColIndex = Coordinate::columnIndexFromString($highestCol);
                 
-                $headerRow = 6;  
+                $headerRow = 6;
                 $firstDataRow = $headerRow + 1;
                 $lastDataRow = 6 + count($this->rows['pax']);
                 $totalsRow = $lastDataRow + 1;
@@ -139,34 +140,21 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // STYLE DES TITRES (Lignes 1-5)
                 // ═══════════════════════════════════════════════════════════
                 
-                // Ligne 1 : SERVICE VTA
-                $s->mergeCells("A1:{$highestCol}1");
-                $s->getStyle("A1")->getFont()->setBold(false)->setSize(12);
-                $s->getStyle("A1")->getAlignment()
+                // Lignes 1-3 : Alignées à gauche
+                for ($row = 1; $row <= 3; $row++) {
+                    $s->mergeCells("A{$row}:{$highestCol}{$row}");
+                    $s->getStyle("A{$row}")->getFont()->setBold(false)->setSize(12);
+                    $s->getStyle("A{$row}")->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_LEFT)
                     ->setVertical(Alignment::VERTICAL_CENTER);
-
-                // Ligne 2 : BUREAU PAX BUS
-                $s->mergeCells("A2:{$highestCol}2");
-                $s->getStyle("A2")->getFont()->setBold(false)->setSize(12);
-                $s->getStyle("A2")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_LEFT)
-                    ->setVertical(Alignment::VERTICAL_CENTER);
-
-                // Ligne 3 : RVA AERO/N'DJILI
-                $s->mergeCells("A3:{$highestCol}3");
-                $s->getStyle("A3")->getFont()->setBold(false)->setSize(12);
-                $s->getStyle("A3")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_LEFT)
-                    ->setVertical(Alignment::VERTICAL_CENTER);
-
+                }
                 // Ligne 5 : TITRE PRINCIPAL (CENTRÉ)
                 $s->mergeCells("A5:{$highestCol}5");
-                $s->getStyle("A5")->getFont()->setBold(true)->setSize(12);
-                $s->getStyle("A5")->getAlignment()
+                $s->getStyle('A5')->getFont()->setBold(true)->setSize(12);
+                $s->getStyle('A5')->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                     ->setVertical(Alignment::VERTICAL_CENTER);
-                $s->getStyle("A5")
+                $s->getStyle('A5')
                     ->getFill()->setFillType('solid')
                     ->getStartColor()->setARGB('FFD9E1F2');
 
@@ -215,6 +203,30 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 $s->getStyle("A{$firstDataRow}:A{$totalsRow}")
                     ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
 
+                // Parcourir toutes les lignes de données pour définir explicitement les valeurs
+                $rowIndex = 0;
+                for ($row = $firstDataRow; $row <= $lastDataRow; $row++) {
+                    $rowData = $this->rows['pax'][$rowIndex] ?? [];
+                    
+                    // Pour chaque opérateur
+                    $colIndex = 2; // Commence à la colonne B (après DATE)
+                    foreach ($this->operators as $op) {
+                        $colLetter = Coordinate::stringFromColumnIndex($colIndex);
+                        $value = $rowData[$op] ?? 0;
+                        
+                        // Utiliser setCellValueExplicit pour forcer l'affichage des 0
+                        $s->setCellValueExplicit(
+                            "{$colLetter}{$row}",
+                            (int)$value,
+                            DataType::TYPE_NUMERIC
+                        );
+                        
+                        $colIndex++;
+                    }
+                    
+                    $rowIndex++;
+                }
+
                 // Colonnes numériques : alignées à droite avec format nombre
                 for ($col = 2; $col <= $highestColIndex; $col++) {
                     $colLetter = Coordinate::stringFromColumnIndex($col);
@@ -222,7 +234,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                         ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                     $s->getStyle("{$colLetter}{$firstDataRow}:{$colLetter}{$totalsRow}")
                         ->getNumberFormat()
-                        ->setFormatCode('#,##0');
+                        ->setFormatCode('0');
                 }
 
                 // ═══════════════════════════════════════════════════════════
@@ -268,17 +280,17 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // ═══════════════════════════════════════════════════════════
                 
                 $s->getRowDimension($headerRow)->setRowHeight(25);
-                $s->getRowDimension($totalsRow)->setRowHeight(25);
+                $s->getRowDimension($totalsRow)->setRowHeight(18);
 
                 // ═══════════════════════════════════════════════════════════
                 // ✅ SIGNATURE (2 colonnes depuis la droite, fusionnées)
                 // ═══════════════════════════════════════════════════════════
                 
-                $signatureRow1 = $totalsRow + 4;
+                $signatureRow1 = $totalsRow + 2;
                 $signatureRow2 = $signatureRow1 + 1;
 
                 // 2 colonnes à partir de la droite
-                $signatureStartCol = Coordinate::stringFromColumnIndex($highestColIndex - 1);
+                $signatureStartCol = Coordinate::stringFromColumnIndex($highestColIndex - 3);
                 $signatureEndCol = Coordinate::stringFromColumnIndex($highestColIndex);
 
                 // Ligne 1 : LE CHEF DE BUREAU PAX BUS ai
@@ -293,12 +305,12 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // Ligne 2 : FREDDY KALEMA TABU
                 $s->mergeCells("{$signatureStartCol}{$signatureRow2}:{$signatureEndCol}{$signatureRow2}");
                 $s->getStyle("{$signatureStartCol}{$signatureRow2}")
-                    ->getFont()->setBold(true)->setSize(12)->setUnderline(true);
+                    ->getFont()->setBold(true)->setSize(12);
                 $s->getStyle("{$signatureStartCol}{$signatureRow2}")
                     ->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                     ->setVertical(Alignment::VERTICAL_CENTER);
-            }
+            },
         ];
     }
 }

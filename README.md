@@ -302,7 +302,7 @@ DELETE /flight-justifications/{flightJustification}
   "flight_regime": "domestic|international",
   "flight_type": "regular|non_regular",
   "flight_nature": "commercial|non_commercial",
-  "status": "qrf|prevu|atteri|annule|detourne",
+  "status": "qrf|prevu|embarque|annule|detourne",
   "departure": [],
   "arrival": [],
   "departure_time": "datetime",

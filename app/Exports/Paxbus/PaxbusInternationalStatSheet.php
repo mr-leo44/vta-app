@@ -180,7 +180,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 
                 $s->getStyle("A{$headerRow}:{$highestCol}{$totalsRow}")
                     ->getBorders()->getAllBorders()
-                    ->setBorderStyle(Border::BORDER_MEDIUM);
+                    ->setBorderStyle(Border::BORDER_THIN);
 
                 // ═══════════════════════════════════════════════════════════
                 // ALTERNANCE DE COULEURS POUR LES LIGNES DE DONNÉES
@@ -270,10 +270,10 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                     ->getFont()->setBold(true)->setSize(12);
                 $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
                     ->getBorders()->getTop()
-                    ->setBorderStyle(Border::BORDER_THICK);
+                    ->setBorderStyle(Border::BORDER_THIN);
                 $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
                     ->getBorders()->getBottom()
-                    ->setBorderStyle(Border::BORDER_THICK);
+                    ->setBorderStyle(Border::BORDER_THIN);
 
                 // ═══════════════════════════════════════════════════════════
                 // HAUTEUR DES LIGNES

@@ -10,6 +10,7 @@ use App\Http\Controllers\Api\OperatorController;
 use App\Http\Controllers\Api\AircraftTypeController;
 use App\Http\Controllers\Api\TraficReportController;
 use App\Http\Controllers\Api\FlightJustificationController;
+use App\Http\Controllers\Api\PaxbusReportController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -35,6 +36,16 @@ Route::get('/trafic-report/{month?}/{year?}/{regime?}', [
 
 Route::get('/trafic-report/export/{month?}/{year?}/{regime?}', [
     TraficReportController::class, 
+    'exportMonthlyReport'
+]);
+
+Route::get('/paxbus-report/{month?}/{year?}/international', [
+    PaxbusReportController::class, 
+    'monthlyInternationalReport'
+]);
+
+Route::get('/paxbus-report/export/{month?}/{year?}/international', [
+    PaxbusReportController::class, 
     'exportMonthlyReport'
 ]);
 

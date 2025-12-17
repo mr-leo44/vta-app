@@ -16,38 +16,28 @@ Route::get('/user', function (Request $request) {
     return $request->user();
 })->middleware('auth:sanctum');
 
-// Route JSON
-Route::get('/trafic-report/{year?}/{regime?}', [
-    TraficReportController::class, 
-    'yearlyReport'
-]);
+Route::prefix('trafic-report')->group(function () {
+    // Route JSON
+    Route::get('/{month?}/{year?}/{regime?}', [
+        TraficReportController::class, 
+        'monthlyReport'
+    ]);
 
-Route::get('/trafic-report/export/{year?}/{regime?}', [
-    TraficReportController::class, 
-    'exportYearlyReport'
-]);
+    Route::get('/{year?}/{regime?}', [
+        TraficReportController::class, 
+        'yearlyReport'
+    ]);
 
-Route::get('/trafic-report/{month?}/{year?}/{regime?}', [
-    TraficReportController::class, 
-    'monthlyReport'
-]);
-
-// Route Export Excel
-
-Route::get('/trafic-report/export/{month?}/{year?}/{regime?}', [
-    TraficReportController::class, 
-    'exportMonthlyReport'
-]);
-
-Route::get('/paxbus-report/{month?}/{year?}/international', [
-    PaxbusReportController::class, 
-    'monthlyInternationalReport'
-]);
-
-Route::get('/paxbus-report/export/{month?}/{year?}/international', [
-    PaxbusReportController::class, 
-    'exportMonthlyReport'
-]);
+    // Route Export Excel
+    Route::get('/export/{month?}/{year?}/{regime?}', [
+        TraficReportController::class, 
+        'exportMonthlyReport'
+    ]);
+    Route::get('/export/{year?}/{regime?}', [
+        TraficReportController::class, 
+        'exportYearlyReport'
+    ]);
+});
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');;
 

@@ -307,7 +307,7 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
 
                 // Hauteur des lignes
                 $s->getRowDimension($headerRow)->setRowHeight(25);
-                $s->getRowDimension($totalsRow)->setRowHeight(25);
+                $s->getRowDimension($totalsRow)->setRowHeight(17);
 
                 // ✅ 2 & 3. SIGNATURE : 2 colonnes depuis la droite, fusionnées et centrées
                 $signatureRow1 = $totalsRow + 2;

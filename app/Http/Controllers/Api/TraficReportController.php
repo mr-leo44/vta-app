@@ -5,10 +5,8 @@ namespace App\Http\Controllers\Api;
 use Carbon\Carbon;
 use App\Models\Flight;
 use App\Models\Operator;
-use Illuminate\Http\Request;
 use App\Enums\FlightTypeEnum;
 use App\Enums\FlightNatureEnum;
-use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
 use App\Exports\TraficReportExport;
 use App\Http\Controllers\Controller;
@@ -18,8 +16,6 @@ use Illuminate\Support\Collection;
 
 class TraficReportController extends Controller
 {
-    private const METRICS = ['pax', 'fret_depart', 'fret_arrivee', 'exced_depart', 'exced_arrivee'];
-
     /**
      * Génère le rapport mensuel avec 5 datasets (un par métrique)
      */

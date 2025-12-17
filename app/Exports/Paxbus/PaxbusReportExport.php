@@ -34,17 +34,17 @@ class PaxbusReportExport implements WithMultipleSheets
                 $this->internationalData,
                 $this->internationalData['operators']
             ),
-            new PaxbusDomesticStatSheet(
-                "VOL NAT",
-                "BASE DE FACTURATION PRESTATION BUS TARMAC VOL NATIONAUX DEPART $selectedMonth $year",
-                $this->domesticData,
-                $this->domesticData['operators']
-            ),
             new PaxbusSyntheticStatSheet(
                 "TAB SYNT",
                 "RAPPORT MENSUEL PAX BUS $selectedMonth $year",
                 $this->domesticData,
                 $this->internationalData
+            ),
+            new PaxbusDomesticStatSheet(
+                "VOL NAT",
+                "BASE DE FACTURATION PRESTATION BUS TARMAC VOL NATIONAUX DEPART $selectedMonth $year",
+                $this->domesticData,
+                $this->domesticData['operators']
             ),
         ];
     }

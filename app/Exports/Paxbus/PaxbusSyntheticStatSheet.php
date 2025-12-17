@@ -208,7 +208,7 @@ class PaxbusSyntheticStatSheet implements FromArray, ShouldAutoSize, WithEvents,
                     ->setVertical(Alignment::VERTICAL_CENTER);
                 $s->getStyle("A{$headerRow1}:{$highestCol}{$headerRow2}")
                     ->getBorders()->getAllBorders()
-                    ->setBorderStyle(Border::BORDER_MEDIUM);
+                    ->setBorderStyle(Border::BORDER_THIN);
 
                 // DONNÉES : Bordures et alignement
                 for ($row = $firstDataRow; $row <= $lastDataRow; $row++) {

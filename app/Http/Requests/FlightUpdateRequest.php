@@ -32,7 +32,7 @@ class FlightUpdateRequest extends FormRequest
             'flight_type' => 'sometimes|in:regular,non_regular',
             'flight_nature' => 'sometimes|in:commercial,state,test,humanitare,afreightment,requisition',
             'flight_regime' => 'sometimes|in:domestic,international',
-            'status' => 'sometimes|in:qrf,prevu,atteri,annule,detourne',
+            'status' => 'sometimes|in:qrf,prevu,embarque,annule,detourne',
             'remarks' => 'nullable|string',
             'statistics' => 'nullable|array',
         ];
@@ -76,7 +76,7 @@ class FlightUpdateRequest extends FormRequest
             'flight_regime.in' => 'Le régime de vol doit être "domestic" ou "international".',
 
             // Status
-            'status.in' => 'Le statut du vol doit être parmi: qrf, prevu, atteri, annule, detourne.',
+            'status.in' => 'Le statut du vol doit être parmi: qrf, prevu, embarque, annule, detourne.',
         ];
     }
 }

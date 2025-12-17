@@ -287,10 +287,10 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                     ->getFont()->setBold(true)->setSize(12);
                 $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
                     ->getBorders()->getTop()
-                    ->setBorderStyle(Border::BORDER_THICK);
+                    ->setBorderStyle(Border::BORDER_THIN);
                 $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
                     ->getBorders()->getBottom()
-                    ->setBorderStyle(Border::BORDER_THICK);
+                    ->setBorderStyle(Border::BORDER_THIN);
 
                 // Hauteur des lignes
                 $s->getRowDimension($headerRow)->setRowHeight(25);

@@ -2,16 +2,17 @@
 
 namespace App\Exports;
 
-use Maatwebsite\Excel\Concerns\FromArray;
-use Maatwebsite\Excel\Concerns\ShouldAutoSize;
-use Maatwebsite\Excel\Concerns\WithEvents;
-use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
-
-use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
-use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use Maatwebsite\Excel\Concerns\FromArray;
+use Maatwebsite\Excel\Concerns\WithTitle;
+use Maatwebsite\Excel\Concerns\WithEvents;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+
+use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use Maatwebsite\Excel\Concerns\ShouldAutoSize;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
 class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvents
 {
@@ -65,13 +66,13 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                 ["BUREAU TRAFIC"],
                 ["SERVICE VTA"],
                 ["RVA AERO/N'DJILI"],
+                array_fill(0, $cols, ""),
                 [$this->title]
             ] as $line
         ) {
             $data[] = array_pad($line, $cols, "");
         }
 
-        $data[] = array_fill(0, $cols, "");
         $data[] = $headings;
 
         // ✅ DONNÉES : On ne met QUE les dates, le reste sera écrit dans AfterSheet
@@ -92,8 +93,6 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
         $data[] = $totRow;
 
         // SIGNATURE
-        $data[] = array_fill(0, $cols, "");
-        $data[] = array_fill(0, $cols, "");
         $data[] = array_fill(0, $cols, "");
 
         $signatureLine1 = array_fill(0, $cols, "");
@@ -122,10 +121,10 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                     ->setHorizontalCentered(true);
 
                 // MARGES
-                $s->getPageMargins()->setTop(0.4);
-                $s->getPageMargins()->setBottom(0.4);
-                $s->getPageMargins()->setLeft(0.4);
-                $s->getPageMargins()->setRight(0.4);
+                $s->getPageMargins()->setTop(0.25);
+                $s->getPageMargins()->setBottom(0.25);
+                $s->getPageMargins()->setLeft(0.25);
+                $s->getPageMargins()->setRight(0.25);
 
                 // DIMENSIONS
                 $highestRow = $s->getHighestRow();
@@ -154,20 +153,20 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                     ->setHorizontal(Alignment::HORIZONTAL_LEFT) // ✅ À gauche
                     ->setVertical(Alignment::VERTICAL_CENTER);
 
-                // Ligne 4 : TITRE PRINCIPAL (CENTRÉ)
-                $s->mergeCells("A4:{$highestCol}4");
-                $s->getStyle("A4")->getFont()->setBold(true)->setSize(16);
-                $s->getStyle("A4")->getAlignment()
+                // Ligne 5 : TITRE PRINCIPAL (CENTRÉ)
+                $s->mergeCells("A5:{$highestCol}5");
+                $s->getStyle("A5")->getFont()->setBold(true)->setSize(16);
+                $s->getStyle("A5")->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_CENTER) // ✅ Centré
                     ->setVertical(Alignment::VERTICAL_CENTER);
-                $s->getStyle("A4")
+                $s->getStyle("A5")
                     ->getFill()->setFillType('solid')
                     ->getStartColor()->setARGB('FFD9E1F2');
 
                 // LIGNES DE DONNÉES
                 $headerRow = 6;
                 $firstDataRow = $headerRow + 1;
-                $lastDataRow = $highestRow - 5;
+                $lastDataRow = $highestRow - 3;
                 $totalsRow = $lastDataRow;
 
                 // STYLE EN-TÊTES
@@ -187,10 +186,6 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                 $s->getStyle("A{$headerRow}:{$highestCol}{$totalsRow}")
                     ->getBorders()->getAllBorders()
                     ->setBorderStyle(Border::BORDER_MEDIUM);
-
-                // ÉCRIRE LES VALEURS DIRECTEMENT
-                $nbCommercialOps = count($this->operators['commercial']);
-                $nbNonCommercialOps = count($this->operators['non_commercial']);
 
                 $currentCol = 2;
                 $columnMapping = [];
@@ -223,7 +218,7 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                         $s->setCellValueExplicit(
                             "{$colLetter}{$row}",
                             (int)$value,
-                            \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_NUMERIC
+                            DataType::TYPE_NUMERIC
                         );
                     }
 
@@ -303,9 +298,6 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                 // STYLE LIGNE TOTAUX
                 $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
                     ->getFont()->setBold(true)->setSize(12);
-                // $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
-                //     ->getFill()->setFillType('solid')
-                //     ->getStartColor()->setARGB('FFFFC000');
                 $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
                     ->getBorders()->getTop()
                     ->setBorderStyle(Border::BORDER_THICK);
@@ -318,7 +310,7 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                 $s->getRowDimension($totalsRow)->setRowHeight(25);
 
                 // ✅ 2 & 3. SIGNATURE : 2 colonnes depuis la droite, fusionnées et centrées
-                $signatureRow1 = $totalsRow + 4;
+                $signatureRow1 = $totalsRow + 2;
                 $signatureRow2 = $signatureRow1 + 1;
 
                 // ✅ 2 colonnes à partir de la droite
@@ -335,7 +327,7 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                 // Ligne 2 : CLAUDE SUMUZEDI N'KILA
                 $s->mergeCells("{$signatureStartCol}{$signatureRow2}:{$signatureEndCol}{$signatureRow2}");
                 $s->getStyle("{$signatureStartCol}{$signatureRow2}")
-                    ->getFont()->setBold(true)->setSize(12)->setUnderline(true);
+                    ->getFont()->setBold(true)->setSize(12);
                 $s->getStyle("{$signatureStartCol}{$signatureRow2}")
                     ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
             }

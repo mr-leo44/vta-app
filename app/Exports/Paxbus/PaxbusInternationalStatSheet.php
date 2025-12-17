@@ -93,11 +93,11 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
 
         // SIGNATURE
         $signatureLine1 = array_fill(0, $cols, '');
-        $signatureLine1[$cols - 4] = 'LE CHEF DE BUREAU PAX BUS ai';
+        $signatureLine1[$cols - 5] = 'LE CHEF DE BUREAU PAX BUS ai';
         $data[] = $signatureLine1;
 
         $signatureLine2 = array_fill(0, $cols, '');
-        $signatureLine2[$cols - 4] = 'FREDDY KALEMA TABU';
+        $signatureLine2[$cols - 5] = 'FREDDY KALEMA TABU';
         $data[] = $signatureLine2;
 
         return $data;
@@ -143,7 +143,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // Lignes 1-3 : Alignées à gauche
                 for ($row = 1; $row <= 3; $row++) {
                     $s->mergeCells("A{$row}:{$highestCol}{$row}");
-                    $s->getStyle("A{$row}")->getFont()->setBold(false)->setSize(12);
+                    $s->getStyle("A{$row}")->getFont()->setBold(false)->setSize(10);
                     $s->getStyle("A{$row}")->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_LEFT)
                     ->setVertical(Alignment::VERTICAL_CENTER);
@@ -279,7 +279,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // HAUTEUR DES LIGNES
                 // ═══════════════════════════════════════════════════════════
                 
-                $s->getRowDimension($headerRow)->setRowHeight(25);
+                $s->getRowDimension($headerRow)->setRowHeight(20);
                 $s->getRowDimension($totalsRow)->setRowHeight(18);
 
                 // ═══════════════════════════════════════════════════════════
@@ -290,10 +290,9 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 $signatureRow2 = $signatureRow1 + 1;
 
                 // 2 colonnes à partir de la droite
-                $signatureStartCol = Coordinate::stringFromColumnIndex($highestColIndex - 3);
+                $signatureStartCol = Coordinate::stringFromColumnIndex($highestColIndex - 4);
                 $signatureEndCol = Coordinate::stringFromColumnIndex($highestColIndex);
 
-                // Ligne 1 : LE CHEF DE BUREAU PAX BUS ai
                 $s->mergeCells("{$signatureStartCol}{$signatureRow1}:{$signatureEndCol}{$signatureRow1}");
                 $s->getStyle("{$signatureStartCol}{$signatureRow1}")
                     ->getFont()->setBold(true)->setSize(11);
@@ -302,7 +301,6 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                     ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                     ->setVertical(Alignment::VERTICAL_CENTER);
 
-                // Ligne 2 : FREDDY KALEMA TABU
                 $s->mergeCells("{$signatureStartCol}{$signatureRow2}:{$signatureEndCol}{$signatureRow2}");
                 $s->getStyle("{$signatureStartCol}{$signatureRow2}")
                     ->getFont()->setBold(true)->setSize(12);

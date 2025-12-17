@@ -134,7 +134,7 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                 // Lignes 1-3 : Alignées à gauche
                 for ($row = 1; $row <= 3; $row++) {
                     $s->mergeCells("A{$row}:{$highestCol}{$row}");
-                    $s->getStyle("A{$row}")->getFont()->setBold(false)->setSize(12);
+                    $s->getStyle("A{$row}")->getFont()->setBold(false)->setSize(10);
                     $s->getStyle("A{$row}")->getAlignment()
                         ->setHorizontal(Alignment::HORIZONTAL_LEFT)
                         ->setVertical(Alignment::VERTICAL_CENTER);

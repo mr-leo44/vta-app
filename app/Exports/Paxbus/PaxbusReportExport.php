@@ -4,32 +4,40 @@ namespace App\Exports\Paxbus;
 
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use App\Exports\Paxbus\PaxbusInternationalStatSheet;
+use App\Exports\Paxbus\PaxbusDomesticStatSheet;
 
 class PaxbusReportExport implements WithMultipleSheets
 {
     protected $month;
     protected $year;
-    protected $reportData;
+    protected $internationalData;
+    protected $domesticData;
 
-    public function __construct($month, $year, $reportData)
+    public function __construct($month, $year, $internationalData, $domesticData)
     {
         $this->month = $month;
         $this->year = $year;
-        $this->reportData = $reportData;
+        $this->internationalData = $internationalData;
+        $this->domesticData = $domesticData;
     }
 
     public function sheets(): array
     {
-        $selectedMonth = $this->getMonth();
         $year = $this->year;
 
         return [
             new PaxbusInternationalStatSheet(
                 "STATISTIQUE INT",
-                "STATISTIQUE DES PASSAGERS BUS ROTATION INTERNATIONAL MOIS DE $selectedMonth $year",
-                $this->reportData,
-                $this->reportData['operators']
-            )
+                "STATISTIQUE DES PASSAGERS BUS ROTATION INTERNATIONAL MOIS DE $this->month $year",
+                $this->internationalData,
+                $this->internationalData['operators']
+            ),
+            new PaxbusDomesticStatSheet(
+                "VOL NAT",
+                "BASE DE FACTURATION PRESTATION BUS TARMAC VOL NATIONAUX DEPART $this->month  $year",
+                $this->domesticData,
+                $this->domesticData['operators']
+            ),
         ];
     }
 

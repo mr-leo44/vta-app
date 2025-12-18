@@ -1,15 +1,15 @@
 <?php
 
-use App\Http\Controllers\Api\AircraftController;
-use App\Http\Controllers\Api\AircraftTypeController;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\FlightController;
-use App\Http\Controllers\Api\FlightJustificationController;
-use App\Http\Controllers\Api\OperatorController;
-use App\Http\Controllers\Api\PaxbusReportController;
-use App\Http\Controllers\Api\TraficReportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\FlightController;
+use App\Http\Controllers\Api\AircraftController;
+use App\Http\Controllers\Api\OperatorController;
+use App\Http\Controllers\Api\AircraftTypeController;
+use App\Http\Controllers\Api\PaxbusReportController;
+use App\Http\Controllers\Api\TraficReportController;
+use App\Http\Controllers\Api\FlightJustificationController;
 
 Route::get('/user', function (Request $request) {
     return $request->user();
@@ -47,6 +47,16 @@ Route::prefix('paxbus-report')->group(function () {
     Route::get('/{month?}/{year?}/{regime?}', [
         PaxbusReportController::class,
         'monthlyReport',
+    ]);
+
+    Route::get('/weekly/export/{quinzaine}/{month}/{year}', [
+        PaxbusReportController::class,
+        'weeklyExportReport',
+    ]);
+    
+    Route::get('/weekly/{quinzaine}/{month}/{year}/{regime}', [
+        PaxbusReportController::class,
+        'weeklyReport',
     ]);
 
 });

@@ -2,25 +2,29 @@
 
 namespace App\Http\Controllers\Api;
 
-use Carbon\Carbon;
-use App\Models\Flight;
-use App\Models\Operator;
-use App\Enums\FlightTypeEnum;
 use App\Enums\FlightNatureEnum;
+use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
+use App\Enums\FlightTypeEnum;
+use App\Exports\Traffic\TraficReportAnnualExport;
 use App\Exports\Traffic\TraficReportExport;
 use App\Http\Controllers\Controller;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\Traffic\TraficReportAnnualExport;
+use App\Models\Flight;
+use App\Models\Operator;
+use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Facades\Excel;
 
 class TraficReportController extends Controller
 {
     /**
-     * Génère le rapport mensuel avec 5 datasets (un par métrique)
+     * Génère le rapport mensuel par regime avec datasets (un par métrique)
      */
-    public function monthlyReport(int $month, int $year, string $regime): array
+    public function monthlyReport(string|int $month, string|int $year, string $regime): array
     {
+        // On force la conversion en entier pour la logique interne (getDaysOfMonth, etc.)
+        $month = (int) $month;
+        $year = (int) $year;
         $days = $this->getDaysOfMonth($month, $year);
 
         // Pour PAX : exclure les opérateurs cargo-only
@@ -30,31 +34,50 @@ class TraficReportController extends Controller
         // Pour fret et excédents : tous les opérateurs
         $commercialOps = $this->getOperators(true, $regime, false);
         $nonCommercialOps = $this->getOperators(false, $regime, false);
-
-        return [
-            'pax' => $this->buildSheetData($days, $regime, 'pax', $commercialOpsPax, $nonCommercialOpsPax),
-            'fret_depart' => $this->buildSheetData($days, $regime, 'fret_depart', $commercialOps, $nonCommercialOps),
-            'fret_arrivee' => $this->buildSheetData($days, $regime, 'fret_arrivee', $commercialOps, $nonCommercialOps),
-            'exced_depart' => $this->buildSheetData($days, $regime, 'exced_depart', $commercialOps, $nonCommercialOps),
-            'exced_arrivee' => $this->buildSheetData($days, $regime, 'exced_arrivee', $commercialOps, $nonCommercialOps),
-            'operators' => [
-                'pax' => [
-                    'commercial' => $commercialOpsPax->pluck('sigle')->toArray(),
-                    'non_commercial' => $nonCommercialOpsPax->pluck('sigle')->toArray(),
+        if ($regime == FlightRegimeEnum::INTERNATIONAL->value) {
+            return [
+                'pax' => $this->buildSheetData($days, $regime, 'pax', $commercialOpsPax, $nonCommercialOpsPax),
+                'fret_depart' => $this->buildSheetData($days, $regime, 'fret_depart', $commercialOps, $nonCommercialOps),
+                'fret_arrivee' => $this->buildSheetData($days, $regime, 'fret_arrivee', $commercialOps, $nonCommercialOps),
+                'exced_depart' => $this->buildSheetData($days, $regime, 'exced_depart', $commercialOps, $nonCommercialOps),
+                'exced_arrivee' => $this->buildSheetData($days, $regime, 'exced_arrivee', $commercialOps, $nonCommercialOps),
+                'operators' => [
+                    'pax' => [
+                        'commercial' => $commercialOpsPax->pluck('sigle')->toArray(),
+                        'non_commercial' => $nonCommercialOpsPax->pluck('sigle')->toArray(),
+                    ],
+                    'fret' => [
+                        'commercial' => $commercialOps->pluck('sigle')->toArray(),
+                        'non_commercial' => $nonCommercialOps->pluck('sigle')->toArray(),
+                    ],
                 ],
-                'fret' => [
-                    'commercial' => $commercialOps->pluck('sigle')->toArray(),
-                    'non_commercial' => $nonCommercialOps->pluck('sigle')->toArray(),
-                ]
-            ]
-        ];
+            ];
+        } else {
+            return [
+                'pax' => $this->buildSheetData($days, $regime, 'pax', $commercialOpsPax, $nonCommercialOpsPax),
+                'fret_depart' => $this->buildSheetData($days, $regime, 'fret_depart', $commercialOps, $nonCommercialOps),
+                'exced_depart' => $this->buildSheetData($days, $regime, 'exced_depart', $commercialOps, $nonCommercialOps),
+                'operators' => [
+                    'pax' => [
+                        'commercial' => $commercialOpsPax->pluck('sigle')->toArray(),
+                        'non_commercial' => $nonCommercialOpsPax->pluck('sigle')->toArray(),
+                    ],
+                    'fret' => [
+                        'commercial' => $commercialOps->pluck('sigle')->toArray(),
+                        'non_commercial' => $nonCommercialOps->pluck('sigle')->toArray(),
+                    ],
+                ],
+            ];
+        }
+
     }
 
     /**
      * Génère le rapport annuel avec 5 datasets (un par métrique)
      */
-    public function yearlyReport(int $year, string $regime): array
+    public function yearlyReport(string|int $year, string $regime): array
     {
+        $year = (int) $year;
         $months = range(1, 12);
 
         // Pour PAX : exclure les opérateurs cargo-only
@@ -65,23 +88,42 @@ class TraficReportController extends Controller
         $commercialOps = $this->getOperators(true, $regime, false);
         $nonCommercialOps = $this->getOperators(false, $regime, false);
 
-        return [
-            'pax' => $this->buildAnnualSheetData($months, $year, $regime, 'pax', $commercialOpsPax, $nonCommercialOpsPax),
-            'fret_depart' => $this->buildAnnualSheetData($months, $year, $regime, 'fret_depart', $commercialOps, $nonCommercialOps),
-            'fret_arrivee' => $this->buildAnnualSheetData($months, $year, $regime, 'fret_arrivee', $commercialOps, $nonCommercialOps),
-            'exced_depart' => $this->buildAnnualSheetData($months, $year, $regime, 'exced_depart', $commercialOps, $nonCommercialOps),
-            'exced_arrivee' => $this->buildAnnualSheetData($months, $year, $regime, 'exced_arrivee', $commercialOps, $nonCommercialOps),
-            'operators' => [
-                'pax' => [
-                    'commercial' => $commercialOpsPax->pluck('sigle')->toArray(),
-                    'non_commercial' => $nonCommercialOpsPax->pluck('sigle')->toArray(),
+        if (FlightRegimeEnum::INTERNATIONAL->value == $regime) {
+            return [
+                'pax' => $this->buildAnnualSheetData($months, $year, $regime, 'pax', $commercialOpsPax, $nonCommercialOpsPax),
+                'fret_depart' => $this->buildAnnualSheetData($months, $year, $regime, 'fret_depart', $commercialOps, $nonCommercialOps),
+                'fret_arrivee' => $this->buildAnnualSheetData($months, $year, $regime, 'fret_arrivee', $commercialOps, $nonCommercialOps),
+                'exced_depart' => $this->buildAnnualSheetData($months, $year, $regime, 'exced_depart', $commercialOps, $nonCommercialOps),
+                'exced_arrivee' => $this->buildAnnualSheetData($months, $year, $regime, 'exced_arrivee', $commercialOps, $nonCommercialOps),
+                'operators' => [
+                    'pax' => [
+                        'commercial' => $commercialOpsPax->pluck('sigle')->toArray(),
+                        'non_commercial' => $nonCommercialOpsPax->pluck('sigle')->toArray(),
+                    ],
+                    'fret' => [
+                        'commercial' => $commercialOps->pluck('sigle')->toArray(),
+                        'non_commercial' => $nonCommercialOps->pluck('sigle')->toArray(),
+                    ],
                 ],
-                'fret' => [
-                    'commercial' => $commercialOps->pluck('sigle')->toArray(),
-                    'non_commercial' => $nonCommercialOps->pluck('sigle')->toArray(),
-                ]
-            ]
-        ];
+            ];
+        } else {
+            return [
+                'pax' => $this->buildAnnualSheetData($months, $year, $regime, 'pax', $commercialOpsPax, $nonCommercialOpsPax),
+                'fret_depart' => $this->buildAnnualSheetData($months, $year, $regime, 'fret_depart', $commercialOps, $nonCommercialOps),
+                'exced_depart' => $this->buildAnnualSheetData($months, $year, $regime, 'exced_depart', $commercialOps, $nonCommercialOps),
+                'operators' => [
+                    'pax' => [
+                        'commercial' => $commercialOpsPax->pluck('sigle')->toArray(),
+                        'non_commercial' => $nonCommercialOpsPax->pluck('sigle')->toArray(),
+                    ],
+                    'fret' => [
+                        'commercial' => $commercialOps->pluck('sigle')->toArray(),
+                        'non_commercial' => $nonCommercialOps->pluck('sigle')->toArray(),
+                    ],
+                ],
+            ];
+
+        }
     }
 
     /**
@@ -212,8 +254,20 @@ class TraficReportController extends Controller
     }
 
     /**
+     * Récupère les jours d'un mois
+     */
+    private function getDaysOfMonth(int $month, int $year): array
+    {
+        $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
+
+        return collect(range(1, $daysInMonth))
+            ->map(fn ($day) => Carbon::create($year, $month, $day)->format('Y-m-d'))
+            ->toArray();
+    }
+
+    /**
      * Récupère les opérateurs ayant des vols pour un régime donné
-     * La nature du vol est déterminée par la relation avec les flights, 
+     * La nature du vol est déterminée par la relation avec les flights,
      * pas par une colonne dans la table operators
      */
     private function getOperators(bool $isCommercial, string $regime, bool $excludeCargoOnly = false): Collection
@@ -259,6 +313,7 @@ class TraficReportController extends Controller
         string $metric
     ): int|float {
         $stats = $this->sumFlightStats($day, $regime, $operatorId, $isCommercial, $type);
+
         return $stats[$metric] ?? 0;
     }
 
@@ -275,6 +330,7 @@ class TraficReportController extends Controller
         string $metric
     ): int|float {
         $stats = $this->sumMonthlyFlightStats($month, $year, $regime, $operatorId, $isCommercial, $type);
+
         return $stats[$metric] ?? 0;
     }
 
@@ -353,7 +409,9 @@ class TraficReportController extends Controller
 
         foreach ($flights as $flight) {
             $stat = $flight->statistic;
-            if (!$stat) continue;
+            if (! $stat) {
+                continue;
+            }
 
             $totals['pax'] += $stat->passengers_count ?? 0;
             $totals['fret_depart'] += $stat->fret_count['departure'] ?? 0;
@@ -368,24 +426,28 @@ class TraficReportController extends Controller
     /**
      * Exporte le rapport mensuel en Excel
      */
-    public function exportMonthlyReport(
-        string $month = '11',
-        string $year = '2025',
-        string $regime = 'international'
-    ) {
-        $reportData = $this->monthlyReport((int) $month, (int) $year, $regime);
-        $monthName = $this->getMonthName((int) $month);
-        $formattedRegime = $regime === 'domestic' ? 'NATIONAL' : 'INTERNATIONAL';
+    public function monthlyExportReport(string $month = '11', string $year = '2025')
+    {
+        // On force le format int pour éviter les erreurs de type
+        $monthInt = (int) $month;
+        $yearInt = (int) $year;
+        $internationalData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        $domesticData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::DOMESTIC->value);
+        $monthName = $this->getMonthName($monthInt);
 
         $fileName = sprintf(
-            'TRAFIC_%s_%s_%s.xlsx',
-            $formattedRegime,
+            'TRAFIC_%s_%s.xlsx',
             $monthName,
             $year
         );
 
         return Excel::download(
-            new TraficReportExport($regime, $month, $year, $reportData),
+            new TraficReportExport(
+                $monthName,
+                $yearInt,
+                $internationalData,
+                $domesticData
+            ),
             $fileName
         );
     }
@@ -393,34 +455,27 @@ class TraficReportController extends Controller
     /**
      * Exporte le rapport annuel en Excel
      */
-    public function exportYearlyReport(string $year, string $regime)
+    public function exportYearlyReport(string $year)
     {
-        $reportData = $this->yearlyReport((int) $year, $regime);
-        $formattedRegime = $regime === 'domestic' ? 'NATIONAL' : 'INTERNATIONAL';
+        $yearInt = (int) $year;
+
+        $internationalData = $this->yearlyReport($yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        $domesticData = $this->yearlyReport($yearInt, FlightRegimeEnum::DOMESTIC->value);
 
         $fileName = sprintf(
-            'TRAFIC_ANNUEL_%s_%s.xlsx',
-            $formattedRegime,
+            'TRAFIC_ANNUEL_%s.xlsx',
             $year
         );
 
         return Excel::download(
-            new TraficReportAnnualExport($regime, $year, $reportData),
+            new TraficReportAnnualExport(
+                $yearInt,
+                $internationalData,
+                $domesticData
+            ),
             $fileName
         );
-    }
-
-    /**
-     * Récupère les jours d'un mois
-     */
-    private function getDaysOfMonth(int $month, int $year): array
-    {
-        $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
-        
-        return collect(range(1, $daysInMonth))
-            ->map(fn($day) => Carbon::create($year, $month, $day)->format('Y-m-d'))
-            ->toArray();
-    }
+   }
 
     /**
      * Récupère le nom du mois
@@ -439,7 +494,7 @@ class TraficReportController extends Controller
             9 => 'SEPTEMBRE',
             10 => 'OCTOBRE',
             11 => 'NOVEMBRE',
-            12 => 'DÉCEMBRE'
+            12 => 'DÉCEMBRE',
         ];
 
         return $monthNames[$month] ?? 'INCONNU';

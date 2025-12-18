@@ -7,25 +7,27 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
-
-use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
+use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
-class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvents
+class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithEvents, WithTitle
 {
     protected $sheetTitle;
+
     protected $title;
+
     protected $rows;
+
     protected $operators;
 
     public function __construct(string $sheetTitle, string $title, array $rows, array $operators)
     {
         $this->sheetTitle = $sheetTitle;
-        $this->title      = $title;
-        $this->rows       = $rows;       // 12 arrays indexés par mois
-        $this->operators  = $operators;
+        $this->title = $title;
+        $this->rows = $rows;
+        $this->operators = $operators;
     }
 
     public function title(): string
@@ -35,22 +37,22 @@ class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithTitle, Wit
 
     protected function headings(): array
     {
-        $headers = ["MOIS"];
+        $headers = ['MOIS'];
 
         foreach ($this->operators['commercial'] as $op) {
             $headers[] = $op;
         }
 
-        $headers[] = "AUTRES";
-        $headers[] = "TOT/COM";
+        $headers[] = 'AUTRES';
+        $headers[] = 'TOT/COM';
 
         foreach ($this->operators['non_commercial'] as $op) {
             $headers[] = $op;
         }
 
-        $headers[] = "AUTRES_NC";
-        $headers[] = "T.N/COM";
-        $headers[] = "TOT GEN";
+        $headers[] = 'AUTRES_NC';
+        $headers[] = 'T.N/COM';
+        $headers[] = 'TOT GEN';
 
         return $headers;
     }
@@ -64,52 +66,50 @@ class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithTitle, Wit
         // TITRES
         foreach (
             [
-                ["BUREAU TRAFIC"],
-                ["SERVICE VTA"],
+                ['SERVICE VTA'],
+                ['BUREAU TRAFIC'],
                 ["RVA AERO/N'DJILI"],
-                [$this->title]
+                [''],
+                [$this->title],
             ] as $line
         ) {
-            $data[] = array_pad($line, $cols, "");
+            $data[] = array_pad($line, $cols, '');
         }
 
-        $data[] = array_fill(0, $cols, "");
         $data[] = $headings;
 
         // === 12 LIGNES MOIS ===
         $monthNames = [
-            "JANVIER", "FÉVRIER", "MARS", "AVRIL",
-            "MAI", "JUIN", "JUILLET", "AOÛT",
-            "SEPTEMBRE", "OCTOBRE", "NOVEMBRE", "DÉCEMBRE"
+            'JANVIER', 'FÉVRIER', 'MARS', 'AVRIL',
+            'MAI', 'JUIN', 'JUILLET', 'AOÛT',
+            'SEPTEMBRE', 'OCTOBRE', 'NOVEMBRE', 'DÉCEMBRE',
         ];
 
         for ($i = 0; $i < 12; $i++) {
             $row = [$monthNames[$i]];
 
             for ($c = 1; $c < $cols; $c++) {
-                $row[] = "";
+                $row[] = '';
             }
 
             $data[] = $row;
         }
 
         // TOTAUX
-        $totRow = ["TOTAUX"];
+        $totRow = ['TOTAUX'];
         for ($i = 1; $i < $cols; $i++) {
-            $totRow[] = "";
+            $totRow[] = '';
         }
         $data[] = $totRow;
 
         // SIGNATURE
-        $data[] = array_fill(0, $cols, "");
-        $data[] = array_fill(0, $cols, "");
-        $data[] = array_fill(0, $cols, "");
+        $data[] = array_fill(0, $cols, '');
 
-        $sig1 = array_fill(0, $cols, "");
-        $sig1[$cols - 3] = "LE CHEF DE BUREAU TRAFIC";
+        $sig1 = array_fill(0, $cols, '');
+        $sig1[$cols - 3] = 'LE CHEF DE BUREAU TRAFIC';
         $data[] = $sig1;
 
-        $sig2 = array_fill(0, $cols, "");
+        $sig2 = array_fill(0, $cols, '');
         $sig2[$cols - 3] = "CLAUDE SUMUZEDI N'KILA";
         $data[] = $sig2;
 
@@ -131,26 +131,31 @@ class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithTitle, Wit
                     ->setFitToHeight(0)
                     ->setHorizontalCentered(true);
 
-                $s->getPageMargins()->setTop(0.4)
-                    ->setBottom(0.4)
-                    ->setLeft(0.4)
-                    ->setRight(0.4);
+                $s->getPageMargins()->setTop(0.25);
+                $s->getPageMargins()->setBottom(0.25);
+                $s->getPageMargins()->setLeft(0.25);
+                $s->getPageMargins()->setRight(0.25);
 
-                $highestRow = $s->getHighestRow();
                 $highestCol = $s->getHighestColumn();
                 $highestColIndex = Coordinate::columnIndexFromString($highestCol);
 
                 // === TITRES ===
-                foreach ([1,2,3] as $i) {
+                foreach ([1, 2, 3] as $i) {
                     $s->mergeCells("A{$i}:{$highestCol}{$i}");
+                    $s->getStyle("A{$i}")->getFont()->setBold(false)->setSize(10);
                     $s->getStyle("A{$i}")->getAlignment()
-                        ->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                        ->setHorizontal(Alignment::HORIZONTAL_LEFT)
+                        ->setVertical(Alignment::VERTICAL_CENTER);
                 }
 
-                $s->mergeCells("A4:{$highestCol}4");
-                $s->getStyle("A4")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                $s->getStyle("A4")->getFont()->setBold(true)->setSize(16);
+                $s->mergeCells("A5:{$highestCol}5");
+                $s->getStyle('A5')->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+                    ->setVertical(Alignment::VERTICAL_CENTER);
+                $s->getStyle('A5')->getFont()->setBold(true)->setSize(16);
+                $s->getStyle('A5')
+                    ->getFill()->setFillType('solid')
+                    ->getStartColor()->setARGB('FFD9E1F2');
 
                 // === TABLEAU ===
                 $headerRow = 6;
@@ -161,19 +166,20 @@ class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithTitle, Wit
                 // HEADERS
                 $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
                     ->getFont()->setBold(true)->setSize(11);
-
+                $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
+                    ->getFill()->setFillType('solid')
+                    ->getStartColor()->setARGB('FF4472C4');
+                $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
+                    ->getFont()->getColor()->setARGB('FFFFFFFF');
                 $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
                     ->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                     ->setVertical(Alignment::VERTICAL_CENTER);
 
+                // BORDURES
                 $s->getStyle("A{$headerRow}:{$highestCol}{$totalsRow}")
                     ->getBorders()->getAllBorders()
                     ->setBorderStyle(Border::BORDER_THIN);
-
-                // === ÉCRITURE DES VALEURS ===
-                $nbCom = count($this->operators['commercial']);
-                $nbNC = count($this->operators['non_commercial']);
 
                 $col = 2;
                 $map = [];
@@ -199,6 +205,8 @@ class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithTitle, Wit
                 $tNComCol = ++$col;
                 $totGenCol = ++$col;
 
+                $rowIndex = 0;
+
                 // === REMPLISSAGE PAR MOIS ===
                 for ($i = 0; $i < 12; $i++) {
 
@@ -209,8 +217,27 @@ class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithTitle, Wit
                         $letter = Coordinate::stringFromColumnIndex($colNum);
                         $value = $rowData[$mapping['key']] ?? 0;
 
-                        $s->setCellValue("{$letter}{$excelRow}", (int)$value);
+                        $s->setCellValue("{$letter}{$excelRow}", (int) $value);
+                        
+                        // Alternance de couleurs
+                        if ($rowIndex % 2 === 0) {
+                            $row = $i + 1;
+                            $s->getStyle("A{$row}:{$highestCol}{$row}")
+                                ->getFill()->setFillType('solid')
+                                ->getStartColor()->setARGB('FFF2F2F2');
+                        }
                     }
+
+                    $rowIndex++;
+                }
+
+                for ($col = 2; $col <= $highestColIndex; $col++) {
+                    $colLetter = Coordinate::stringFromColumnIndex($col);
+                    $s->getStyle("{$colLetter}{$firstDataRow}:{$colLetter}{$totalsRow}")
+                        ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                    $s->getStyle("{$colLetter}{$firstDataRow}:{$colLetter}{$totalsRow}")
+                        ->getNumberFormat()
+                        ->setFormatCode('#,##0');
                 }
 
                 // === FORMULES ===
@@ -250,13 +277,16 @@ class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithTitle, Wit
                 // === STYLE TOTALS ===
                 $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
                     ->getFont()->setBold(true);
+                $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
+                    ->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
 
                 // === SIGNATURE ===
-                $sig1 = $totalsRow + 4;
+                $sig1 = $totalsRow + 2;
                 $sig2 = $sig1 + 1;
 
                 $startSig = Coordinate::stringFromColumnIndex($highestColIndex - 2);
-                $endSig   = Coordinate::stringFromColumnIndex($highestColIndex);
+                $endSig = Coordinate::stringFromColumnIndex($highestColIndex);
 
                 $s->mergeCells("{$startSig}{$sig1}:{$endSig}{$sig1}");
                 $s->mergeCells("{$startSig}{$sig2}:{$endSig}{$sig2}");
@@ -266,7 +296,7 @@ class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithTitle, Wit
 
                 $s->getStyle("{$startSig}{$sig2}")->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            }
+            },
         ];
     }
 }

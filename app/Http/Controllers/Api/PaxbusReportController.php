@@ -18,7 +18,7 @@ use App\Exports\Paxbus\PaxbusWeeklyReportExport;
 class PaxbusReportController extends Controller
 {
     /**
-     * Génère le rapport mensuel international
+     * Génère le rapport mensuel par regime
      */
     public function monthlyReport(string|int $month, string|int $year, string $regime): array
     {

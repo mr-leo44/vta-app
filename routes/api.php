@@ -16,26 +16,26 @@ Route::get('/user', function (Request $request) {
 })->middleware('auth:sanctum');
 
 Route::prefix('trafic-report')->group(function () {
-    // Route JSON
-    
+    Route::get('/export/{year?}', [
+        TraficReportController::class,
+        'exportYearlyReport',
+    ]);
+
+    Route::get('/export/{month?}/{year?}', [
+        TraficReportController::class,
+        'monthlyExportReport',
+    ]);
+
     Route::get('/{year?}/{regime?}', [
         TraficReportController::class,
         'yearlyReport',
     ]);
+
     Route::get('/{month?}/{year?}/{regime?}', [
         TraficReportController::class,
         'monthlyReport',
     ]);
     
-    // Route Export Excel
-    Route::get('/export/{month?}/{year?}/{regime?}', [
-        TraficReportController::class,
-        'exportMonthlyReport',
-    ]);
-    Route::get('/export/{year?}/{regime?}', [
-        TraficReportController::class,
-        'exportYearlyReport',
-    ]);
 });
 
 Route::prefix('paxbus-report')->group(function () {

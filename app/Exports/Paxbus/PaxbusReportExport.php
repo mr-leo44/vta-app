@@ -62,7 +62,7 @@ class PaxbusReportExport implements WithMultipleSheets
             }
         }
         if($prefixe == "") {
-            $prefixe = "DE";
+            $prefixe = "DE ";
         }
 
         return "MOIS " . $prefixe . $mois;

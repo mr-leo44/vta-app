@@ -63,8 +63,8 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
         // TITRES
         foreach (
             [
-                ["BUREAU TRAFIC"],
                 ["SERVICE VTA"],
+                ["BUREAU TRAFIC"],
                 ["RVA AERO/N'DJILI"],
                 [""],
                 [$this->title]

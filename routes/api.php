@@ -17,16 +17,16 @@ Route::get('/user', function (Request $request) {
 
 Route::prefix('trafic-report')->group(function () {
     // Route JSON
-    Route::get('/{month?}/{year?}/{regime?}', [
-        TraficReportController::class,
-        'monthlyReport',
-    ]);
-
+    
     Route::get('/{year?}/{regime?}', [
         TraficReportController::class,
         'yearlyReport',
     ]);
-
+    Route::get('/{month?}/{year?}/{regime?}', [
+        TraficReportController::class,
+        'monthlyReport',
+    ]);
+    
     // Route Export Excel
     Route::get('/export/{month?}/{year?}/{regime?}', [
         TraficReportController::class,

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Exports;
+namespace App\Exports\Traffic;
 
 use Maatwebsite\Excel\Events\AfterSheet;
 use Maatwebsite\Excel\Concerns\FromArray;

@@ -8,10 +8,10 @@ use App\Models\Operator;
 use App\Enums\FlightTypeEnum;
 use App\Enums\FlightNatureEnum;
 use App\Enums\FlightStatusEnum;
-use App\Exports\TraficReportExport;
+use App\Exports\Traffic\TraficReportExport;
 use App\Http\Controllers\Controller;
 use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\TraficReportAnnualExport;
+use App\Exports\Traffic\TraficReportAnnualExport;
 use Illuminate\Support\Collection;
 
 class TraficReportController extends Controller

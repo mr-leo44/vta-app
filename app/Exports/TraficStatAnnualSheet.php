@@ -169,7 +169,7 @@ class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithTitle, Wit
 
                 $s->getStyle("A{$headerRow}:{$highestCol}{$totalsRow}")
                     ->getBorders()->getAllBorders()
-                    ->setBorderStyle(Border::BORDER_MEDIUM);
+                    ->setBorderStyle(Border::BORDER_THIN);
 
                 // === ÉCRITURE DES VALEURS ===
                 $nbCom = count($this->operators['commercial']);

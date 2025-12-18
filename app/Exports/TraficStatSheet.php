@@ -172,7 +172,7 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
                 // BORDURES
                 $s->getStyle("A{$headerRow}:{$highestCol}{$totalsRow}")
                     ->getBorders()->getAllBorders()
-                    ->setBorderStyle(Border::BORDER_MEDIUM);
+                    ->setBorderStyle(Border::BORDER_THIN);
 
                 $currentCol = 2;
                 $columnMapping = [];

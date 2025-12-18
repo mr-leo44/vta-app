@@ -205,8 +205,6 @@ class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithEvents, Wi
                 $tNComCol = ++$col;
                 $totGenCol = ++$col;
 
-                $rowIndex = 0;
-
                 // === REMPLISSAGE PAR MOIS ===
                 for ($i = 0; $i < 12; $i++) {
 
@@ -218,17 +216,7 @@ class TraficStatAnnualSheet implements FromArray, ShouldAutoSize, WithEvents, Wi
                         $value = $rowData[$mapping['key']] ?? 0;
 
                         $s->setCellValue("{$letter}{$excelRow}", (int) $value);
-                        
-                        // Alternance de couleurs
-                        if ($rowIndex % 2 === 0) {
-                            $row = $i + 1;
-                            $s->getStyle("A{$row}:{$highestCol}{$row}")
-                                ->getFill()->setFillType('solid')
-                                ->getStartColor()->setARGB('FFF2F2F2');
-                        }
                     }
-
-                    $rowIndex++;
                 }
 
                 for ($col = 2; $col <= $highestColIndex; $col++) {

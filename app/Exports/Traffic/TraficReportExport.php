@@ -6,106 +6,107 @@ use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
 class TraficReportExport implements WithMultipleSheets
 {
-    protected $regime;
     protected $month;
-    protected $year;
-    protected $reportData;
 
-    public function __construct($regime, $month, $year, $reportData)
+    protected $year;
+
+    protected $internationaldata;
+
+    protected $domesticData;
+
+    public function __construct($month, $year, $internationaldata, $domesticData)
     {
-        $this->regime = $regime;
         $this->month = $month;
         $this->year = $year;
-        $this->reportData = $reportData;
+        $this->internationaldata = $internationaldata;
+        $this->domesticData = $domesticData;
     }
 
     public function sheets(): array
     {
-        $regime = $this->regime === "domestic" ? 'NATIONAL' : 'INTERNATIONAL';
-        $selectedMonth = $this->getMonth();
+        $selectedMonth = $this->getMonth($this->month);
         $year = $this->year;
-        $short_regime = $regime === 'NATIONAL' ? 'NAT' : 'INT';
-
-        if ($this->regime === "international") {
-            return [
-                new TraficStatSheet(
-                    "PAX $short_regime",
-                    "PASSAGERS VOLS $regime $selectedMonth $year",
-                    $this->reportData['pax'],
-                    $this->reportData['operators']['pax']
-                ),
-                new TraficStatSheet(
-                    "FRET $short_regime DEPART",
-                    "FRET $regime DEPART $selectedMonth $year",
-                    $this->reportData['fret_depart'],
-                    $this->reportData['operators']['fret']
-                ),
-                new TraficStatSheet(
-                    "FRET $short_regime ARRIVEE",
-                    "FRET $regime ARRIVEE $selectedMonth $year",
-                    $this->reportData['fret_arrivee'],
-                    $this->reportData['operators']['fret']
-                ),
-                new TraficStatSheet(
-                    "EXCED FRET $short_regime DEPART",
-                    "EXCEDENT FRET $regime DEPART $selectedMonth $year",
-                    $this->reportData['exced_depart'],
-                    $this->reportData['operators']['fret']
-                ),
-                new TraficStatSheet(
-                    "EXCED FRET $short_regime ARRIVEE",
-                    "EXCEDENT FRET $regime ARRIVEE $selectedMonth $year",
-                    $this->reportData['exced_arrivee'],
-                    $this->reportData['operators']['fret']
-                )
-            ];
-        }
 
         return [
             new TraficStatSheet(
-                "PAX $short_regime",
-                "PASSAGERS VOLS $regime $selectedMonth $year",
-                $this->reportData['pax'],
-                $this->reportData['operators']['pax']
+                'PAX NAT',
+                "PASSAGERS VOLS NATIONAL $selectedMonth $year",
+                $this->domesticData['pax'],
+                $this->domesticData['operators']['pax']
             ),
             new TraficStatSheet(
-                "FRET $short_regime DEPART",
-                "FRET $regime DEPART $selectedMonth $year",
-                $this->reportData['fret_depart'],
-                $this->reportData['operators']['fret']
+                'PAX INT',
+                "PASSAGERS VOLS INTERNATIONAL $selectedMonth $year",
+                $this->internationaldata['pax'],
+                $this->internationaldata['operators']['pax']
             ),
             new TraficStatSheet(
-                "EXCED FRET $short_regime DEPART",
-                "EXCEDENT FRET $regime DEPART $selectedMonth $year",
-                $this->reportData['exced_depart'],
-                $this->reportData['operators']['fret']
-            )
+                'FRET NAT DEPART',
+                "FRET NATIONAL DEPART $selectedMonth $year",
+                $this->domesticData['fret_depart'],
+                $this->domesticData['operators']['fret']
+            ),
+            new TraficStatSheet(
+                'EXCED FRET NAT DEPART',
+                "EXCEDENT FRET NATIONAL DEPART $selectedMonth $year",
+                $this->domesticData['exced_depart'],
+                $this->domesticData['operators']['fret']
+            ),
+            new TraficStatSheet(
+                'FRET INT DEPART',
+                "FRET INTERNATIONAL DEPART $selectedMonth $year",
+                $this->internationaldata['fret_depart'],
+                $this->internationaldata['operators']['fret']
+            ),
+            new TraficStatSheet(
+                'EXCED FRET INT DEPART',
+                "EXCEDENT FRET INTERNATIONAL DEPART $selectedMonth $year",
+                $this->internationaldata['exced_depart'],
+                $this->internationaldata['operators']['fret']
+            ),
+            new TraficStatSheet(
+                'FRET INT ARRIVEE',
+                "FRET INTERNATIONAL ARRIVEE $selectedMonth $year",
+                $this->internationaldata['fret_arrivee'],
+                $this->internationaldata['operators']['fret']
+            ),
+            new TraficStatSheet(
+                'EXCED FRET INT ARRIVEE',
+                "EXCEDENT FRET INTERNATIONAL ARRIVEE $selectedMonth $year",
+                $this->internationaldata['exced_arrivee'],
+                $this->internationaldata['operators']['fret']
+            ),
         ];
+
+        // if ($this->regime === "international") {
+        //     return [
+        //
+
+        //     ];
+        // }
+
+        // return [
+        //
+        //
+        // ];
     }
 
-    private function getMonth(): string
+    private function getMonth(string $month): string
     {
-        $monthNames = [
-            '01' => 'JANVIER',
-            '02' => 'FÉVRIER',
-            '03' => 'MARS',
-            '04' => 'AVRIL',
-            '05' => 'MAI',
-            '06' => 'JUIN',
-            '07' => 'JUILLET',
-            '08' => 'AOÛT',
-            '09' => 'SEPTEMBRE',
-            '10' => 'OCTOBRE',
-            '11' => 'NOVEMBRE',
-            '12' => 'DÉCEMBRE'
-        ];
-
-        $monthNumber = str_pad((string)$this->month, 2, '0', STR_PAD_LEFT);
-        $mois = $monthNames[$monthNumber] ?? 'MOIS INCONNU';
+        $mois = $month;
 
         $voyelles = ['A', 'E', 'I', 'O', 'U', 'Y'];
-        $prefixe = in_array($mois[0], $voyelles) ? "D'" : "DE ";
+        $prefixe = '';
+        foreach ($voyelles as $voyelle) {
+            if (str_starts_with($mois, $voyelle)) {
+                $prefixe = "D'";
+                break;
+            }
+        }
+        if ($prefixe == '') {
+            $prefixe = 'DE ';
+        }
 
-        return "MOIS " . $prefixe . $mois;
+        return 'MOIS '.$prefixe.$mois;
     }
 }

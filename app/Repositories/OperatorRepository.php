@@ -3,6 +3,7 @@
 namespace App\Repositories;
 
 use App\Models\Operator;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -75,11 +76,15 @@ class OperatorRepository implements OperatorRepositoryInterface
      */
     public function findByNameOrIata(string $term): ?LengthAwarePaginator
     {
-        return Operator::where('name', 'like', "%$term%")
-            ->orWhere('iata_code', 'like', "%$term%")
-            ->orWhere('icao_code', 'like', "%$term%")
-            ->orWhere('sigle', 'like', "%$term%")
-            ->latest()->paginate(10);
+        return $this->buildSearchQuery($term)->latest()->paginate(10);
             
+    }
+
+    private function buildSearchQuery(string $term): Builder
+{
+    return Operator::where('name', 'like', "%{$term}%")
+        ->orWhere('iata_code', 'like', "%{$term}%")
+        ->orWhere('icao_code', 'like', "%{$term}%")
+        ->orWhere('sigle', 'like', "%{$term}%");
     }
 }

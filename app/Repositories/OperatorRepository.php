@@ -82,9 +82,9 @@ class OperatorRepository implements OperatorRepositoryInterface
 
     private function buildSearchQuery(string $term): Builder
 {
-    return Operator::where('name', 'like', "%{$term}%")
-        ->orWhere('iata_code', 'like', "%{$term}%")
-        ->orWhere('icao_code', 'like', "%{$term}%")
-        ->orWhere('sigle', 'like', "%{$term}%");
+    return Operator::where('name', 'like', '%' . $term .'%')
+        ->orWhere('iata_code', 'like', '%' . $term .'%')
+        ->orWhere('icao_code', 'like', '%' . $term .'%')
+        ->orWhere('sigle', 'like', '%' . $term .'%');
     }
 }

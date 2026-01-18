@@ -82,8 +82,11 @@ class OperatorController extends Controller
      */
     public function search(Request $request)
     {
-        $term = $request->get('term');
-        $operators = $this->service->findByNameOrIata($term);
+        $validated = $request->validate([
+            'term' => 'required|string|max:100'
+        ]);
+
+        $operators = $this->service->findByNameOrIata($validated['term']);
         return $operators
             ? OperatorResource::collection($operators)
             : ApiResponse::error('Exploitant non trouvé', 404);

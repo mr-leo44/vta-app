@@ -4,8 +4,6 @@ namespace App\Services;
 
 use App\Repositories\UserRepositoryInterface;
 use Illuminate\Hashing\HashManager;
-use Laravel\Sanctum\PersonalAccessToken;
-use App\Helpers\ApiResponse;
 use App\Models\User;
 
 class AuthService implements AuthServiceInterface
@@ -28,7 +26,7 @@ class AuthService implements AuthServiceInterface
 
         // create sanctum token
         $token = $user->createToken('vta-app-auth-token')->plainTextToken;
-
+        
         return [
             'user' => $user,
             'token' => $token,

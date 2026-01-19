@@ -2,14 +2,17 @@
 
 namespace App\Http\Requests;
 
+use App\Traits\RateLimited;
 use Illuminate\Support\Str;
 use Illuminate\Auth\Events\Lockout;
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
+use Illuminate\Validation\Rules\Password;
 
 class LoginRequest extends FormRequest
 {
+    use RateLimited;
     /**
      * @bodyParam username string required The username of the user. Example: jdoe
      * @bodyParam password string required The user's password. Example: secret
@@ -23,16 +26,12 @@ class LoginRequest extends FormRequest
     {
         return [
             'username' => ['required', 'string'],
-            'password' => ['required', 'string'],
+            'password' => [
+                'required',
+                'string',
+                Password::min(8),  // P1: Minimum 8 characters
+            ],
         ];
-    }
-
-    /**
-     * Vérifie si l'utilisateur est bloqué avant même la validation.
-     */
-    protected function prepareForValidation(): void
-    {
-        $this->ensureIsNotRateLimited();
     }
 
     /**
@@ -50,24 +49,6 @@ class LoginRequest extends FormRequest
     {
         RateLimiter::clear($this->throttleKey());
     }
-
-    protected function ensureIsNotRateLimited(): void
-    {
-        if (! RateLimiter::tooManyAttempts($this->throttleKey(), 5)) {
-            return;
-        }
-
-        event(new Lockout($this));
-
-        $seconds = RateLimiter::availableIn($this->throttleKey());
-
-        throw ValidationException::withMessages([
-            'username' => trans('auth.throttle', [
-                'seconds' => $seconds,
-                'minutes' => ceil($seconds / 60),
-            ]),
-        ]);
-        }
 
     public function throttleKey(): string
     {

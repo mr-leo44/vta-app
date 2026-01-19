@@ -18,5 +18,5 @@ interface AuthServiceInterface
      * Logout the given user by revoking their current access token.
      * Returns true on success, false otherwise.
      */
-    public function logout(\App\Models\User $user): bool;
+    public function logout(User $user): bool;
 }

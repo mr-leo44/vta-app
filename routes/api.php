@@ -70,16 +70,19 @@ Route::get('operators/search', [OperatorController::class, 'search'])->name('ope
 Route::get('operators/all', [OperatorController::class, 'all'])->name('operators.all');
 Route::apiResource('operators', OperatorController::class);
 
+Route::get('aircraft-types/filter', [AircraftTypeController::class, 'filter'])->name('aircraft-types.filter');
 Route::get('aircraft-types/find/{query}', [AircraftTypeController::class, 'find'])->name('aircraft-types.find');
 Route::get('aircraft-types/all', [AircraftTypeController::class, 'all'])->name('aircraft-types.all');
 Route::apiResource('aircraft-types', AircraftTypeController::class);
 
 Route::get('operators/{operator}/aircrafts', [AircraftController::class, 'byOperator'])->name('aircrafts.byOperator');
+Route::get('aircrafts/filter', [AircraftController::class, 'filter'])->name('aircrafts.filter');
 Route::get('aircrafts/search', [AircraftController::class, 'search'])->name('aircrafts.search');
 Route::get('aircrafts/all', [AircraftController::class, 'all'])->name('aircrafts.all');
 Route::apiResource('aircrafts', AircraftController::class);
 
 Route::apiResource('flight-justifications', FlightJustificationController::class);
+Route::get('flights/filter', [FlightController::class, 'filter'])->name('flights.filter');
 Route::get('flights/all', [FlightController::class, 'all'])->name('flights.all');
 Route::get('/flights/daily', [FlightController::class, 'flightsByDate']);
 Route::apiResource('flights', FlightController::class);

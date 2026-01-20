@@ -19,4 +19,9 @@ interface OperatorServiceInterface
     public function delete(Operator $operator): bool;
 
     public function findByNameOrIata(string $term): ?LengthAwarePaginator;
+
+    /**
+     * Filter operators with criteria.
+     */
+    public function filter(array $filters): LengthAwarePaginator;
 }

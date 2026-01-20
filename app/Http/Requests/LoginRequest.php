@@ -19,6 +19,8 @@ class LoginRequest extends FormRequest
      */
     public function authorize(): bool
     {
+        // Ensure rate limiting is enforced before validation
+        $this->ensureIsNotRateLimited();
         return true;
     }
 

@@ -123,6 +123,15 @@ class OperatorRepository implements OperatorRepositoryInterface
             $query->where('flight_nature', $filters['flight_nature']);
         }
 
+        // Filter by operators with flights
+        if ($filters['with_flights'] !== null && $filters['with_flights'] !== '') {
+            if ($filters['with_flights']) {
+                $query->has('flights');
+            } else {
+                $query->doesntHave('flights');
+            }
+        }
+
         // Apply sorting
         $sort = $filters['sort'] ?? 'name:asc';
         [$column, $direction] = explode(':', $sort);

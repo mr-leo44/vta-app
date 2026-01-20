@@ -10,6 +10,7 @@ use App\Http\Resources\AircraftResource;
 use App\Services\AircraftServiceInterface;
 use App\Http\Requests\StoreAircraftRequest;
 use App\Http\Requests\UpdateAircraftRequest;
+use App\Http\Requests\FilterAircraftRequest;
 
 /**
  * @group Aircrafts
@@ -194,5 +195,25 @@ class AircraftController extends Controller
         return $aircrafts
             ? AircraftResource::collection($aircrafts)
             : ApiResponse::error('Aéronef non trouvé', 404);
+    }
+
+    /**
+     * Filter aircrafts with advanced criteria.
+     *
+     * @queryParam search string The immatriculation to search. Example: 9Q
+     * @queryParam operator_id integer Filter by operator ID. Example: 1
+     * @queryParam aircraft_type_id integer Filter by aircraft type ID. Example: 2
+     * @queryParam pmad_from numeric Filter by PMAD (from). Example: 5000
+     * @queryParam pmad_to numeric Filter by PMAD (to). Example: 50000
+     * @queryParam in_activity boolean Filter by activity status. Example: 1
+     * @queryParam with_flights boolean Filter by having flights. Example: 1
+     * @queryParam sort string The sort order. Example: immatriculation:asc
+     * @queryParam per_page integer Items per page. Example: 20
+     */
+    public function filter(FilterAircraftRequest $request)
+    {
+        $filters = $request->getFilters();
+        $aircrafts = $this->service->filter($filters);
+        return AircraftResource::collection($aircrafts);
     }
 }

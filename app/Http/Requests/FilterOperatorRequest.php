@@ -19,6 +19,7 @@ class FilterOperatorRequest extends FormRequest
             'flight_type' => ['nullable', 'in:regular,non_regular'],
             'flight_regime' => ['nullable', 'in:domestic,international'],
             'flight_nature' => ['nullable', 'in:commercial,non_commercial'],
+            'with_flights' => ['nullable', 'boolean'],
             'sort' => ['nullable', 'in:name:asc,name:desc,created_at:asc,created_at:desc,updated_at:desc'],
             'per_page' => ['nullable', 'integer', 'min:1', 'max:100'],
         ];
@@ -36,6 +37,7 @@ class FilterOperatorRequest extends FormRequest
             'flight_type.in' => 'Le type de vol doit être "regular" ou "non_regular".',
             'flight_regime.in' => 'Le régime doit être "domestic" ou "international".',
             'flight_nature.in' => 'La nature doit être "commercial" ou "non_commercial".',
+            'with_flights.boolean' => 'with_flights doit être booléen.',
             'sort.in' => 'Le tri invalide. Options: name:asc, name:desc, created_at:asc, created_at:desc, updated_at:desc.',
             
             'per_page.integer' => 'Le nombre par page doit être un nombre entier.',
@@ -55,6 +57,7 @@ class FilterOperatorRequest extends FormRequest
             'flight_type' => $this->input('flight_type'),
             'flight_regime' => $this->input('flight_regime'),
             'flight_nature' => $this->input('flight_nature'),
+            'with_flights' => $this->input('with_flights'),
             'sort' => $this->input('sort', 'name:asc'),
             'per_page' => $this->input('per_page', 15),
         ];

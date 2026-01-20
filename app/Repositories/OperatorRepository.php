@@ -3,7 +3,6 @@
 namespace App\Repositories;
 
 use App\Models\Operator;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Pagination\LengthAwarePaginator;
 
@@ -76,15 +75,61 @@ class OperatorRepository implements OperatorRepositoryInterface
      */
     public function findByNameOrIata(string $term): ?LengthAwarePaginator
     {
-        return $this->buildSearchQuery($term)->latest()->paginate(10);
-            
+        return Operator::where('name', 'like', "%$term%")
+            ->orWhere('iata_code', 'like', "%$term%")
+            ->orWhere('icao_code', 'like', "%$term%")
+            ->orWhere('sigle', 'like', "%$term%")
+            ->latest()->paginate(10);
     }
 
-    private function buildSearchQuery(string $term): Builder
-{
-    return Operator::where('name', 'like', '%' . $term .'%')
-        ->orWhere('iata_code', 'like', '%' . $term .'%')
-        ->orWhere('icao_code', 'like', '%' . $term .'%')
-        ->orWhere('sigle', 'like', '%' . $term .'%');
+    /**
+     * Filter operators with multiple criteria and sorting.
+     *
+     * @param array $filters
+     * @return LengthAwarePaginator
+     */
+    public function filter(array $filters): LengthAwarePaginator
+    {
+        $query = Operator::with('flights', 'aircrafts');
+
+        // Search in name, IATA, ICAO, sigle
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%$search%")
+                    ->orWhere('iata_code', 'like', "%$search%")
+                    ->orWhere('icao_code', 'like', "%$search%")
+                    ->orWhere('sigle', 'like', "%$search%");
+            });
+        }
+
+        // Filter by country
+        if (!empty($filters['country'])) {
+            $query->where('country', $filters['country']);
+        }
+
+        // Filter by flight type
+        if (!empty($filters['flight_type'])) {
+            $query->where('flight_type', $filters['flight_type']);
+        }
+
+        // Filter by flight regime
+        if (!empty($filters['flight_regime'])) {
+            $query->where('flight_regime', $filters['flight_regime']);
+        }
+
+        // Filter by flight nature
+        if (!empty($filters['flight_nature'])) {
+            $query->where('flight_nature', $filters['flight_nature']);
+        }
+
+        // Apply sorting
+        $sort = $filters['sort'] ?? 'name:asc';
+        [$column, $direction] = explode(':', $sort);
+        $query->orderBy($column, strtoupper($direction));
+
+        // Paginate
+        $perPage = $filters['per_page'] ?? 15;
+        return $query->paginate($perPage);
     }
 }

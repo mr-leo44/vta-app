@@ -37,4 +37,27 @@ class AircraftTypeRepository implements AircraftTypeRepositoryInterface
     {
         $aircraftType->delete();
     }
+
+    public function filter(array $filters): LengthAwarePaginator
+    {
+        $query = AircraftType::with('aircrafts');
+
+        // Search in name and sigle
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('name', 'like', "%$search%")
+                    ->orWhere('sigle', 'like', "%$search%");
+            });
+        }
+
+        // Apply sorting
+        $sort = $filters['sort'] ?? 'name:asc';
+        [$column, $direction] = explode(':', $sort);
+        $query->orderBy($column, strtoupper($direction));
+
+        // Paginate
+        $perPage = $filters['per_page'] ?? 15;
+        return $query->paginate($perPage);
+    }
 }

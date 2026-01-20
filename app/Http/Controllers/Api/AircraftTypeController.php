@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\AircraftTypeResource;
 use App\Services\AircraftTypeServiceInterface;
+use App\Http\Requests\FilterAircraftTypeRequest;
 
 /**
  * @group AircraftTypes
@@ -169,5 +170,19 @@ class AircraftTypeController extends Controller
         return $aircraftType
             ? AircraftTypeResource::collection($aircraftType)
             : ApiResponse::error('Type d\'aéronef non trouvé', 404);
+    }
+
+    /**
+     * Filter aircraft types with advanced criteria.
+     *
+     * @queryParam search string The search term (name/sigle). Example: Boeing
+     * @queryParam sort string The sort order (name:asc, name:desc, created_at:asc, created_at:desc). Example: name:asc
+     * @queryParam per_page integer Items per page. Example: 20
+     */
+    public function filter(FilterAircraftTypeRequest $request)
+    {
+        $filters = $request->getFilters();
+        $aircraftTypes = $this->service->filter($filters);
+        return AircraftTypeResource::collection($aircraftTypes);
     }
 }

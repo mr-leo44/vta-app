@@ -14,4 +14,5 @@ interface AircraftRepositoryInterface
     public function create(array $data): Aircraft;
     public function update(Aircraft $aircraft, array $data): Aircraft;
     public function delete(Aircraft $aircraft): bool;
+    public function filter(array $filters): LengthAwarePaginator;
 }

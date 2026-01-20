@@ -45,9 +45,12 @@ return [
     | considered expired. This will override any values set in the token's
     | "expires_at" attribute, but first-party sessions are not affected.
     |
+    | Default Laravel: 60 minutes
+    | VTA Configuration: 480 minutes (8 heures)
+    |
     */
 
-    'expiration' => 60,
+    'expiration' => env('SANCTUM_EXPIRATION', 480),
 
     /*
     |--------------------------------------------------------------------------
@@ -60,9 +63,11 @@ return [
     |
     | See: https://docs.github.com/en/code-security/secret-scanning/about-secret-scanning
     |
+    | VTA Configuration: Tokens are prefixed with 'vta_' for identification
+    |
     */
 
-    'token_prefix' => env('SANCTUM_TOKEN_PREFIX', ''),
+    'token_prefix' => env('SANCTUM_TOKEN_PREFIX', 'vta_'),
 
     /*
     |--------------------------------------------------------------------------

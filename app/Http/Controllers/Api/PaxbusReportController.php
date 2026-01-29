@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers\Api;
 
-use Carbon\Carbon;
-use App\Models\Flight;
-use App\Models\Operator;
-use App\Enums\FlightTypeEnum;
 use App\Enums\FlightNatureEnum;
 use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
-use App\Http\Controllers\Controller;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\Paxbus\PaxbusReportExport;
-use Illuminate\Database\Eloquent\Collection;
+use App\Enums\FlightTypeEnum;
+use App\Exports\Paxbus\PaxbusMonthlyReportExport;
 use App\Exports\Paxbus\PaxbusWeeklyReportExport;
+use App\Http\Controllers\Controller;
+use App\Models\Flight;
+use App\Models\Operator;
+use Carbon\Carbon;
+use Illuminate\Database\Eloquent\Collection;
+use Maatwebsite\Excel\Facades\Excel;
 
 class PaxbusReportController extends Controller
 {
@@ -31,11 +31,11 @@ class PaxbusReportController extends Controller
 
         // Utilisation de match (PHP 8+) pour plus de clarté
         $pax_data = match ($regime) {
-            FlightRegimeEnum::INTERNATIONAL->value => $this->buildInternationalSheetData($days, $operators),
-            FlightRegimeEnum::DOMESTIC->value => $this->buildDomesticSheetData($days, $operators),
+            FlightRegimeEnum::INTERNATIONAL->value => $this->buildMonthlyInternationalSheetData($days, $operators),
+            FlightRegimeEnum::DOMESTIC->value => $this->buildMonthlyDomesticSheetData($days, $operators),
             default => [],
         };
-
+        
         return [
             'pax' => $pax_data,
             'operators' => $operators->pluck('sigle')->toArray(),
@@ -45,7 +45,7 @@ class PaxbusReportController extends Controller
     /**
      * Construit les données pour une feuille internationale
      */
-    private function buildInternationalSheetData(array $days, Collection $operators)
+    private function buildMonthlyInternationalSheetData(array $days, Collection $operators)
     {
         $startDate = Carbon::parse($days[0])->startOfMonth();
         $endDate = Carbon::parse($days[0])->endOfMonth();
@@ -78,7 +78,7 @@ class PaxbusReportController extends Controller
     /**
      * Construit les données pour une feuille domestique
      */
-    private function buildDomesticSheetData(array $days, Collection $operators)
+    private function buildMonthlyDomesticSheetData(array $days, Collection $operators)
     {
         // 1. Récupération de la plage de dates
         $startDate = Carbon::parse(reset($days))->startOfDay();
@@ -117,7 +117,6 @@ class PaxbusReportController extends Controller
                     $count = $flightsOfDay->where('operator_id', $op->id)
                         ->where('aircraft_id', $aircraft->id)
                         ->count();
-
                     $row[$op->sigle][$aircraft->immatriculation] = [
                         'count' => $count,
                         'pmad' => $aircraft->pmad,
@@ -136,7 +135,7 @@ class PaxbusReportController extends Controller
     {
         // Déterminer la plage de dates selon la quinzaine
         [$startDate, $endDate] = $this->getQuinzaineDates($quinzaine, $month, $year);
-        
+
         $days = $this->getDaysInRange($startDate, $endDate);
         $operators = $this->getOperators($regime);
 
@@ -194,7 +193,7 @@ class PaxbusReportController extends Controller
                     $immatriculation = $flight->aircraft->immatriculation ?? 'N/A';
                     $paxBus = $flight->statistic['pax_bus'] ?? 0;
 
-                    if (!isset($result[$dayFormatted][$operator->sigle])) {
+                    if (! isset($result[$dayFormatted][$operator->sigle])) {
                         $result[$dayFormatted][$operator->sigle] = [];
                     }
 
@@ -247,13 +246,15 @@ class PaxbusReportController extends Controller
 
                 foreach ($operatorFlights as $flight) {
                     $aircraft = $flight->aircraft;
-                    if (!$aircraft) continue;
+                    if (! $aircraft) {
+                        continue;
+                    }
 
                     $immatriculation = $aircraft->immatriculation;
                     $pmad = $aircraft->pmad;
                     $category = $pmad >= 50000 ? '≥50T' : '<50T';
 
-                    if (!isset($result[$dayFormatted][$operator->sigle])) {
+                    if (! isset($result[$dayFormatted][$operator->sigle])) {
                         $result[$dayFormatted][$operator->sigle] = [];
                     }
 
@@ -337,7 +338,7 @@ class PaxbusReportController extends Controller
     /**
      * Exporte le rapport mensuel en Excel (International + National)
      */
-    public function monthlyExportReport(string $month = "11", string $year = "2025")
+    public function monthlyExportReport(string $month = '11', string $year = '2025')
     {
         // On force le format int pour éviter les erreurs de type
         $monthInt = (int) $month;
@@ -355,7 +356,7 @@ class PaxbusReportController extends Controller
 
         // On passe les tableaux complets (contenant 'pax' et 'operators')
         return Excel::download(
-            new PaxbusReportExport(
+            new PaxbusMonthlyReportExport(
                 $monthName,
                 $yearInt,
                 $internationalData,
@@ -428,5 +429,4 @@ class PaxbusReportController extends Controller
 
         return $monthNames[$month] ?? 'INCONNU';
     }
-
 }

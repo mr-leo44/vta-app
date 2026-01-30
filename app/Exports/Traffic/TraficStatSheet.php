@@ -86,7 +86,7 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
         }
 
         // TOTAUX
-        $totRow = ["TOTAUX"];
+        $totRow = ["TOTAL"];
         for ($i = 2; $i <= $cols; $i++) {
             $totRow[] = '';
         }

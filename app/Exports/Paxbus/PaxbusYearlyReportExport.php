@@ -3,6 +3,7 @@
 namespace App\Exports\Paxbus;
 
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
+use App\Exports\Paxbus\PaxbusYearlyDomesticOperatorsStatSheet;
 use App\Exports\Paxbus\PaxbusYearlyInternationalOperatorsStatSheet;
 
 class PaxbusYearlyReportExport implements WithMultipleSheets
@@ -30,7 +31,13 @@ class PaxbusYearlyReportExport implements WithMultipleSheets
                 $this->internationalData,
                 $this->internationalData['operators']
             ),
-            
+            new PaxbusYearlyDomesticOperatorsStatSheet(
+                "CIES NAT",
+                "RAPPORT ANNUEL PAX BUS $year",
+                "NOMBRE DES VOLS PAR COMPAGNIES NATIONALES",
+                $this->domesticData,
+                $this->domesticData['operators']
+            )
         ];
     }
 }

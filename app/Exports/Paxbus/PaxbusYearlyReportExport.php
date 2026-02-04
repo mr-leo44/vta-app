@@ -5,6 +5,7 @@ namespace App\Exports\Paxbus;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 use App\Exports\Paxbus\PaxbusYearlyDomesticOperatorsStatSheet;
 use App\Exports\Paxbus\PaxbusYearlyInternationalOperatorsStatSheet;
+use App\Exports\Paxbus\PaxbusYearlySyntheticsStatSheet;
 
 class PaxbusYearlyReportExport implements WithMultipleSheets
 {
@@ -37,7 +38,13 @@ class PaxbusYearlyReportExport implements WithMultipleSheets
                 "NOMBRE DES VOLS PAR COMPAGNIES NATIONALES",
                 $this->domesticData,
                 $this->domesticData['operators']
-            )
+            ),
+            new PaxbusYearlySyntheticsStatSheet(
+                "TAB SYNTH",
+                "TABLEAU RECAPITULATIF DES DONNEES PAX BUS ET TONNAGE DES AERONEFS $year",
+                $this->domesticData,
+                $this->internationalData
+            ),
         ];
     }
 }

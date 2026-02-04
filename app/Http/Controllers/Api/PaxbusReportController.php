@@ -276,7 +276,7 @@ class PaxbusReportController extends Controller
         $domesticData = $this->yearlyReport($yearInt, FlightRegimeEnum::DOMESTIC->value);
 
         $fileName = sprintf(
-            'RAPPORT_MENSUEL_PAX_BUS_%s.xlsx',
+            'RAPPORT_ANNUEL_PAX_BUS_%s.xlsx',
             $yearInt
         );
 

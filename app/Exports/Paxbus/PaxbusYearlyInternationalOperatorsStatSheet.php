@@ -324,20 +324,21 @@ class PaxbusYearlyInternationalOperatorsStatSheet implements FromArray, ShouldAu
 
     private function getMonthName($month): string
     {
+        $explodedMonth = explode('-', $month)[0];
         $monthNames = [
-                '01-2026' => 'JANVIER',
-                '02-2026' => 'FÉVRIER',
-                '03-2026' => 'MARS',
-                '04-2026' => 'AVRIL',
-                '05-2026' => 'MAI',
-                '06-2026' => 'JUIN',
-                '07-2026' => 'JUILLET',
-                '08-2026' => 'AOÛT',
-                '09-2026' => 'SEPTEMBRE',
-                '10-2026' => 'OCTOBRE',
-                '11-2026' => 'NOVEMBRE',
-                '12-2026' => 'DÉCEMBRE',
-            ];
-        return $monthNames[$month] ?? '';
+            '01' => 'JANVIER',
+            '02' => 'FÉVRIER',
+            '03' => 'MARS',
+            '04' => 'AVRIL',
+            '05' => 'MAI',
+            '06' => 'JUIN',
+            '07' => 'JUILLET',
+            '08' => 'AOÛT',
+            '09' => 'SEPTEMBRE',
+            '10' => 'OCTOBRE',
+            '11' => 'NOVEMBRE',
+            '12' => 'DÉCEMBRE',
+        ];
+        return $monthNames[$explodedMonth] ?? '';
     }
 }

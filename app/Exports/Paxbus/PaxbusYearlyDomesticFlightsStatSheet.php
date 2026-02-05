@@ -73,7 +73,6 @@ class PaxbusYearlyDomesticFlightsStatSheet implements FromArray, ShouldAutoSize,
 
         $data[] = $headings;
 
-
         foreach ($this->rows['pax'] as $row) {
             $month = $this->getMonthName($row['date']);
             $dataRow = [$month ?? ''];
@@ -226,12 +225,17 @@ class PaxbusYearlyDomesticFlightsStatSheet implements FromArray, ShouldAutoSize,
                     $colIndex = 2; // Commence à la colonne B (après DATE)
                     foreach ($this->operators as $op) {
                         $colLetter = Coordinate::stringFromColumnIndex($colIndex);
-                        $value = $rowData[$op] ?? 0;
+                        
+                        // Calculer la somme des vols pour cet opérateur (comme dans array())
+                        $flightsCount = 0;
+                        foreach ($rowData[$op] ?? [] as $opAircrafts) {
+                            $flightsCount += $opAircrafts['count'];
+                        }
 
                         // Utiliser setCellValueExplicit pour forcer l'affichage des 0
                         $s->setCellValueExplicit(
                             "{$colLetter}{$row}",
-                            (int)$value,
+                            (int)$flightsCount,
                             DataType::TYPE_NUMERIC
                         );
 

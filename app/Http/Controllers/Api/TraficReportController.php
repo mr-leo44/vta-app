@@ -8,6 +8,7 @@ use App\Enums\FlightStatusEnum;
 use App\Enums\FlightTypeEnum;
 use App\Exports\Traffic\TraficReportAnnualExport;
 use App\Exports\Traffic\TraficReportExport;
+use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\Flight;
 use App\Models\Operator;
@@ -20,11 +21,17 @@ class TraficReportController extends Controller
     /**
      * Génère le rapport mensuel par regime avec datasets (un par métrique)
      */
-    public function monthlyReport(string|int $month, string|int $year, string $regime): array
+    public function monthlyReport(string|int $month, string|int $year, string $regime): array|\Illuminate\Http\JsonResponse
     {
         // On force la conversion en entier pour la logique interne (getDaysOfMonth, etc.)
         $month = (int) $month;
         $year = (int) $year;
+
+        // Vérifier s'il y a des données de vols pour ce mois
+        if (!$this->hasFlightData($month, $year, $regime)) {
+            return ApiResponse::error('Pas de données disponibles', 400);
+        }
+
         $days = $this->getDaysOfMonth($month, $year);
 
         // Pour PAX : exclure les opérateurs cargo-only
@@ -75,9 +82,15 @@ class TraficReportController extends Controller
     /**
      * Génère le rapport annuel avec 5 datasets (un par métrique)
      */
-    public function yearlyReport(string|int $year, string $regime): array
+    public function yearlyReport(string|int $year, string $regime): array|\Illuminate\Http\JsonResponse
     {
         $year = (int) $year;
+
+        // Vérifier s'il y a des données de vols pour cette année
+        if (!$this->hasFlightData(null, $year, $regime)) {
+            return ApiResponse::error('Pas de données disponibles', 400);
+        }
+
         $months = range(1, 12);
 
         // Pour PAX : exclure les opérateurs cargo-only
@@ -476,6 +489,28 @@ class TraficReportController extends Controller
             $fileName
         );
    }
+
+    /**
+     * Vérifie s'il y a des données de vols pour une année ou un mois spécifique
+     */
+    private function hasFlightData(?int $month, int $year, string $regime): bool
+    {
+        $query = Flight::where('flight_regime', $regime);
+
+        if ($month !== null) {
+            // Vérification pour un mois spécifique
+            $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth();
+            $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+            $query->whereBetween('departure_time', [$startDate, $endDate]);
+        } else {
+            // Vérification pour une année complète
+            $startDate = Carbon::createFromDate($year, 1, 1)->startOfYear();
+            $endDate = Carbon::createFromDate($year, 12, 31)->endOfYear();
+            $query->whereBetween('departure_time', [$startDate, $endDate]);
+        }
+
+        return $query->exists();
+    }
 
     /**
      * Récupère le nom du mois

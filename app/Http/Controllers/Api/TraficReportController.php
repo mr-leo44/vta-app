@@ -137,7 +137,7 @@ class TraficReportController extends Controller
         Collection $nonCommercialOps
     ): array {
         return collect($days)->map(function ($day) use ($regime, $metric, $commercialOps, $nonCommercialOps) {
-            $row = ['date' => Carbon::parse($day)->format('d/m/Y')];
+            $row = ['DATE' => Carbon::parse($day)->format('d/m/Y')];
 
             // Commercial operators
             foreach ($commercialOps as $op) {
@@ -199,7 +199,7 @@ class TraficReportController extends Controller
         Collection $nonCommercialOps
     ): array {
         return collect($months)->map(function ($month) use ($year, $regime, $metric, $commercialOps, $nonCommercialOps) {
-            $row = ['date' => Carbon::create($year, $month, 1)->format('m-Y')];
+            $row = ['MOIS' => Carbon::create($year, $month, 1)->format('m-Y')];
 
             // Commercial operators
             foreach ($commercialOps as $op) {

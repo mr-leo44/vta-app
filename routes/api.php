@@ -21,25 +21,29 @@ Route::get('/user', function (Request $request) {
 
 // Reports routes
 Route::prefix('trafic-report')->group(function () {
-    Route::get('/export/{year?}', [
+    Route::get('/yearly/export/{year?}', [
         TraficReportController::class,
         'exportYearlyReport',
     ]);
-    Route::get('/export/{month?}/{year?}', [
+    Route::get('/monthly/export/{month?}/{year?}', [
         TraficReportController::class,
         'monthlyExportReport',
     ]);
-    Route::get('/{year?}/{regime?}', [
+    Route::get('/yearly/{year?}/{regime?}', [
         TraficReportController::class,
         'yearlyReport',
     ]);
-    Route::get('/{month?}/{year?}/{regime?}', [
+    Route::get('/monthly/{month?}/{year?}/{regime?}', [
         TraficReportController::class,
         'monthlyReport',
     ]);
 });
 
 Route::prefix('paxbus-report')->group(function () {
+    Route::get('/yearly/export/{year}', [
+        PaxbusReportController::class,
+        'yearlyExportReport',
+    ]);
     Route::get('/monthly/export/{month}/{year}', [
         PaxbusReportController::class,
         'monthlyExportReport',
@@ -47,6 +51,10 @@ Route::prefix('paxbus-report')->group(function () {
     Route::get('/weekly/export/{quinzaine}/{month}/{year}', [
         PaxbusReportController::class,
         'weeklyExportReport',
+    ]);
+    Route::get('/yearly/{year}/{regime}', [
+        PaxbusReportController::class,
+        'yearlyReport',
     ]);
     Route::get('/monthly/{month}/{year}/{regime}', [
         PaxbusReportController::class,

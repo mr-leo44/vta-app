@@ -2,18 +2,19 @@
 
 namespace App\Http\Controllers\Api;
 
+use Carbon\Carbon;
+use App\Models\Flight;
+use App\Models\Operator;
+use App\Enums\FlightTypeEnum;
 use App\Enums\FlightNatureEnum;
 use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
-use App\Enums\FlightTypeEnum;
-use App\Exports\Paxbus\PaxbusMonthlyReportExport;
-use App\Exports\Paxbus\PaxbusWeeklyReportExport;
 use App\Http\Controllers\Controller;
-use App\Models\Flight;
-use App\Models\Operator;
-use Carbon\Carbon;
-use Illuminate\Database\Eloquent\Collection;
 use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Database\Eloquent\Collection;
+use App\Exports\Paxbus\PaxbusWeeklyReportExport;
+use App\Exports\Paxbus\PaxbusYearlyReportExport;
+use App\Exports\Paxbus\PaxbusMonthlyReportExport;
 
 class PaxbusReportController extends Controller
 {
@@ -35,7 +36,7 @@ class PaxbusReportController extends Controller
             FlightRegimeEnum::DOMESTIC->value => $this->buildMonthlyDomesticSheetData($days, $operators),
             default => [],
         };
-        
+
         return [
             'pax' => $pax_data,
             'operators' => $operators->pluck('sigle')->toArray(),
@@ -65,8 +66,8 @@ class PaxbusReportController extends Controller
             foreach ($operators as $op) {
                 // 2. Filtrer la collection en mémoire (pas de SQL ici)
                 $total_pax = $allFlights->where('operator_id', $op->id)
-                    ->filter(fn ($f) => Carbon::parse($f->departure_time)->format('Y-m-d') === $currentDay)
-                    ->sum(fn ($f) => $f->statistic['pax_bus'] ?? 0);
+                    ->filter(fn($f) => Carbon::parse($f->departure_time)->format('Y-m-d') === $currentDay)
+                    ->sum(fn($f) => $f->statistic['pax_bus'] ?? 0);
 
                 $row[$op->sigle] = $total_pax;
             }
@@ -126,6 +127,168 @@ class PaxbusReportController extends Controller
 
             return $row;
         })->toArray();
+    }
+
+    /**
+     * Exporte le rapport mensuel en Excel (International + National)
+     */
+    public function monthlyExportReport(string $month = '11', string $year = '2025')
+    {
+        // On force le format int pour éviter les erreurs de type
+        $monthInt = (int) $month;
+        $yearInt = (int) $year;
+
+        $internationalData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        $domesticData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::DOMESTIC->value);
+
+        $monthName = $this->getMonthName($monthInt);
+        $fileName = sprintf(
+            'RAPPORT_MENSUEL_PAX_BUS_%s_%s.xlsx',
+            $monthName,
+            $yearInt
+        );
+
+        // On passe les tableaux complets (contenant 'pax' et 'operators')
+        return Excel::download(
+            new PaxbusMonthlyReportExport(
+                $monthName,
+                $yearInt,
+                $internationalData,
+                $domesticData
+            ),
+            $fileName
+        );
+    }
+
+    /**
+     * Génère le rapport annuel par regime
+     */
+    public function yearlyReport(string|int $year, string $regime): array
+    {
+        // On force la conversion en entier pour la logique interne (getDaysOfMonth, etc.)
+        $year = (int) $year;
+        $months = range(1, 12);
+        $operators = $this->getOperators($regime);
+
+        // Utilisation de match (PHP 8+) pour plus de clarté
+        $pax_data = match ($regime) {
+            FlightRegimeEnum::INTERNATIONAL->value => $this->buildYearlyInternationalSheetData($months, $year, $operators),
+            FlightRegimeEnum::DOMESTIC->value => $this->buildYearlyDomesticSheetData($months, $year, $operators),
+            default => [],
+        };
+
+        return [
+            'pax' => $pax_data,
+            'operators' => $operators->pluck('sigle')->toArray(),
+        ];
+    }
+
+    /**
+     * Construit les données pour une feuille internationale
+     */
+    private function buildYearlyInternationalSheetData(array $months, int $year, Collection $operators)
+    {
+        $rows = [];
+        foreach ($months as $month) {
+            $start = Carbon::create($year, $month, 1)->startOfMonth();
+            $end = Carbon::create($year, $month, 1)->endOfMonth();
+
+            $row = [];
+            $allFlights = Flight::with('statistic')
+                ->whereBetween('departure_time', [$start, $end])
+                ->where('flight_regime', FlightRegimeEnum::INTERNATIONAL->value)
+                ->where('flight_nature', FlightNatureEnum::COMMERCIAL->value)
+                ->where('flight_type', FlightTypeEnum::REGULAR->value)
+                ->where('status', FlightStatusEnum::DEPARTED->value)
+                ->get();
+
+            $formattedMonth = Carbon::create($year, $month, 1)->format('m-Y');
+            $currentMonth = Carbon::create($year, $month, 1)->format('Y-m');
+            $row = ['date' => $formattedMonth];
+
+            foreach ($operators as $operator) {
+                $total_pax = $allFlights->where('operator_id', $operator->id)
+                    ->filter(fn($f) => Carbon::parse($f->departure_time)->format('Y-m') === $currentMonth)
+                    ->sum(fn($f) => $f->statistic['pax_bus'] ?? 0);
+
+                $row[$operator->sigle] = $total_pax;
+            }
+            $rows[] = $row;
+        }
+
+        return $rows;
+    }
+
+    /**
+     * Construit les données pour une feuille domestique
+     */
+    private function buildYearlyDomesticSheetData(array $months, int $year, Collection $operators)
+    {
+        $rows = [];
+
+        foreach ($months as $month) {
+            $start = Carbon::create($year, $month, 1)->startOfMonth();
+            $end = Carbon::create($year, $month, 1)->endOfMonth();
+            $row = [];
+            $allFlights = Flight::whereBetween('departure_time', [$start, $end])
+                ->where('flight_regime', FlightRegimeEnum::DOMESTIC->value)
+                ->where('flight_nature', FlightNatureEnum::COMMERCIAL->value)
+                ->where('flight_type', FlightTypeEnum::REGULAR->value)
+                ->where('status', FlightStatusEnum::DEPARTED->value)
+                ->get();
+
+            $row = ['date' => Carbon::create($year, $month, 1)->format('m-Y')];
+
+            foreach ($operators as $op) {
+                $opAircrafts = $op->aircrafts;
+
+                if ($opAircrafts->isEmpty()) {
+                    continue;
+                }
+
+                $row[$op->sigle] = [];
+
+                foreach ($opAircrafts as $aircraft) {
+                    // 3. Filtrage en mémoire au lieu d'une requête SQL
+                    $count = $allFlights->where('operator_id', $op->id)
+                        ->where('aircraft_id', $aircraft->id)
+                        ->count();
+                    $row[$op->sigle][$aircraft->immatriculation] = [
+                        'count' => $count,
+                        'pmad' => $aircraft->pmad,
+                    ];
+                }
+            }
+            $rows[] = $row;
+        }
+        return $rows;
+    }
+
+    /**
+     * Exporte le rapport annuel en Excel (International + National)
+     */
+    public function yearlyExportReport(string $year = '2025')
+    {
+        // On force le format int pour éviter les erreurs de type
+        $yearInt = (int) $year;
+
+        $internationalData = $this->yearlyReport($yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        $domesticData = $this->yearlyReport($yearInt, FlightRegimeEnum::DOMESTIC->value);
+
+        $fileName = sprintf(
+            'RAPPORT_ANNUEL_PAX_BUS_%s.xlsx',
+            $yearInt
+        );
+
+        // On passe les tableaux complets (contenant 'pax' et 'operators')
+        return Excel::download(
+            new PaxbusYearlyReportExport(
+                $yearInt,
+                $internationalData,
+                $domesticData
+            ),
+            $fileName
+        );
     }
 
     /**
@@ -336,38 +499,6 @@ class PaxbusReportController extends Controller
     }
 
     /**
-     * Exporte le rapport mensuel en Excel (International + National)
-     */
-    public function monthlyExportReport(string $month = '11', string $year = '2025')
-    {
-        // On force le format int pour éviter les erreurs de type
-        $monthInt = (int) $month;
-        $yearInt = (int) $year;
-
-        $internationalData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::INTERNATIONAL->value);
-        $domesticData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::DOMESTIC->value);
-
-        $monthName = $this->getMonthName($monthInt);
-        $fileName = sprintf(
-            'RAPPORT_MENSUEL_PAX_BUS_%s_%s.xlsx',
-            $monthName,
-            $yearInt
-        );
-
-        // On passe les tableaux complets (contenant 'pax' et 'operators')
-        return Excel::download(
-            new PaxbusMonthlyReportExport(
-                $monthName,
-                $yearInt,
-                $internationalData,
-                $domesticData
-            ),
-            $fileName
-        );
-
-    }
-
-    /**
      * Récupère les opérateurs ayant des vols pour un régime donné
      */
     private function getOperators(string $regime): Collection
@@ -403,7 +534,7 @@ class PaxbusReportController extends Controller
         $daysInMonth = Carbon::create($year, $month, 1)->daysInMonth;
 
         return collect(range(1, $daysInMonth))
-            ->map(fn ($day) => Carbon::create($year, $month, $day)->format('Y-m-d'))
+            ->map(fn($day) => Carbon::create($year, $month, $day)->format('Y-m-d'))
             ->toArray();
     }
 

@@ -77,7 +77,7 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
 
         // ✅ DONNÉES : On ne met QUE les dates, le reste sera écrit dans AfterSheet
         foreach ($this->rows as $row) {
-            $dataRow = [$row['date'] ?? ''];
+            $dataRow = [$row['DATE'] ?? ''];
             // Remplir le reste avec des chaînes vides (temporaire)
             for ($i = 1; $i < $cols; $i++) {
                 $dataRow[] = '';
@@ -86,7 +86,7 @@ class TraficStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvent
         }
 
         // TOTAUX
-        $totRow = ["TOTAUX"];
+        $totRow = ["TOTAL"];
         for ($i = 2; $i <= $cols; $i++) {
             $totRow[] = '';
         }

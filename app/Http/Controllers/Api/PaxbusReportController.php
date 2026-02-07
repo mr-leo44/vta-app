@@ -145,7 +145,18 @@ class PaxbusReportController extends Controller
         $yearInt = (int) $year;
 
         $internationalData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($internationalData instanceof \Illuminate\Http\JsonResponse) {
+            return $internationalData;
+        }
+        
         $domesticData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::DOMESTIC->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($domesticData instanceof \Illuminate\Http\JsonResponse) {
+            return $domesticData;
+        }
 
         $monthName = $this->getMonthName($monthInt);
         $fileName = sprintf(
@@ -285,7 +296,18 @@ class PaxbusReportController extends Controller
         $yearInt = (int) $year;
 
         $internationalData = $this->yearlyReport($yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($internationalData instanceof \Illuminate\Http\JsonResponse) {
+            return $internationalData;
+        }
+        
         $domesticData = $this->yearlyReport($yearInt, FlightRegimeEnum::DOMESTIC->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($domesticData instanceof \Illuminate\Http\JsonResponse) {
+            return $domesticData;
+        }
 
         $fileName = sprintf(
             'RAPPORT_ANNUEL_PAX_BUS_%s.xlsx',

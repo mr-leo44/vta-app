@@ -2,33 +2,33 @@
 
 namespace App\Http\Controllers\Api;
 
-use Carbon\Carbon;
-use App\Models\Flight;
-use App\Models\Operator;
-use App\Helpers\ApiResponse;
-use App\Enums\FlightTypeEnum;
 use App\Enums\FlightNatureEnum;
 use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
-use Illuminate\Http\JsonResponse;
-use Illuminate\Support\Collection;
-use App\Http\Controllers\Controller;
-use Maatwebsite\Excel\Facades\Excel;
-use App\Exports\Traffic\TraficReportExport;
+use App\Enums\FlightTypeEnum;
 use App\Exports\Traffic\TraficReportAnnualExport;
+use App\Exports\Traffic\TraficReportExport;
+use App\Helpers\ApiResponse;
+use App\Http\Controllers\Controller;
+use App\Models\Flight;
+use App\Models\Operator;
+use Carbon\Carbon;
+use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Facades\Excel;
 
-class TraficReportController extends Controller
+class IdefReportController extends Controller
 {
     /**
      * Génère le rapport mensuel par regime avec datasets (un par métrique)
      */
-    public function monthlyReport(string|int $month, string|int $year, string $regime): array|JsonResponse
+    public function monthlyReport(string|int $month, string|int $year, string $regime)
+    // : array|\Illuminate\Http\JsonResponse
     {
         // On force la conversion en entier pour la logique interne (getDaysOfMonth, etc.)
         $month = (int) $month;
         $year = (int) $year;
 
-        // Vérifier s'il y a des données de vols pour ce mois
+        // Vérifier s'il y a des données de vols pour ce mois 
         if (!$this->hasFlightData($month, $year, $regime)) {
             return ApiResponse::error('Pas de données disponibles', 400);
         }
@@ -36,47 +36,47 @@ class TraficReportController extends Controller
         $days = $this->getDaysOfMonth($month, $year);
 
         // Pour PAX : exclure les opérateurs cargo-only
-        $commercialOpsPax = $this->getOperators(true, $regime, true);
-        $nonCommercialOpsPax = $this->getOperators(false, $regime, true);
+        // $commercialOpsPax = $this->getOperators(true, $regime, true);
 
         // Pour fret et excédents : tous les opérateurs
-        $commercialOps = $this->getOperators(true, $regime, false);
-        $nonCommercialOps = $this->getOperators(false, $regime, false);
-        if ($regime == FlightRegimeEnum::INTERNATIONAL->value) {
-            return [
-                'pax' => $this->buildSheetData($days, $regime, 'pax', $commercialOpsPax, $nonCommercialOpsPax),
-                'fret_depart' => $this->buildSheetData($days, $regime, 'fret_depart', $commercialOps, $nonCommercialOps),
-                'fret_arrivee' => $this->buildSheetData($days, $regime, 'fret_arrivee', $commercialOps, $nonCommercialOps),
-                'exced_depart' => $this->buildSheetData($days, $regime, 'exced_depart', $commercialOps, $nonCommercialOps),
-                'exced_arrivee' => $this->buildSheetData($days, $regime, 'exced_arrivee', $commercialOps, $nonCommercialOps),
-                'operators' => [
-                    'pax' => [
-                        'commercial' => $commercialOpsPax->pluck('sigle')->toArray(),
-                        'non_commercial' => $nonCommercialOpsPax->pluck('sigle')->toArray(),
-                    ],
-                    'fret' => [
-                        'commercial' => $commercialOps->pluck('sigle')->toArray(),
-                        'non_commercial' => $nonCommercialOps->pluck('sigle')->toArray(),
-                    ],
-                ],
-            ];
-        } else {
-            return [
-                'pax' => $this->buildSheetData($days, $regime, 'pax', $commercialOpsPax, $nonCommercialOpsPax),
-                'fret_depart' => $this->buildSheetData($days, $regime, 'fret_depart', $commercialOps, $nonCommercialOps),
-                'exced_depart' => $this->buildSheetData($days, $regime, 'exced_depart', $commercialOps, $nonCommercialOps),
-                'operators' => [
-                    'pax' => [
-                        'commercial' => $commercialOpsPax->pluck('sigle')->toArray(),
-                        'non_commercial' => $nonCommercialOpsPax->pluck('sigle')->toArray(),
-                    ],
-                    'fret' => [
-                        'commercial' => $commercialOps->pluck('sigle')->toArray(),
-                        'non_commercial' => $nonCommercialOps->pluck('sigle')->toArray(),
-                    ],
-                ],
-            ];
-        }
+        $Ops = $this->getOperators($regime, true);
+        dd($Ops);
+        
+        // if ($regime == FlightRegimeEnum::INTERNATIONAL->value) {
+        //     return [
+        //         'pax' => $this->buildSheetData($days, $regime, 'pax', $commercialOpsPax, $nonCommercialOpsPax),
+                // 'fret_depart' => $this->buildSheetData($days, $regime, 'fret_depart', $commercialOps, $nonCommercialOps),
+                // 'fret_arrivee' => $this->buildSheetData($days, $regime, 'fret_arrivee', $commercialOps, $nonCommercialOps),
+                // 'exced_depart' => $this->buildSheetData($days, $regime, 'exced_depart', $commercialOps, $nonCommercialOps),
+                // 'exced_arrivee' => $this->buildSheetData($days, $regime, 'exced_arrivee', $commercialOps, $nonCommercialOps),
+        //         'operators' => [
+        //             'pax' => [
+        //                 'commercial' => $commercialOpsPax->pluck('sigle')->toArray(),
+        //                 // 'non_commercial' => $nonCommercialOpsPax->pluck('sigle')->toArray(),
+        //             ],
+        //             'fret' => [
+        //                 'commercial' => $commercialOps->pluck('sigle')->toArray(),
+        //                 'non_commercial' => $nonCommercialOps->pluck('sigle')->toArray(),
+        //             ],
+        //         ],
+        //     ];
+        // } else {
+        //     return [
+        //         'pax' => $this->buildSheetData($days, $regime, 'pax', $commercialOpsPax, $nonCommercialOpsPax),
+        //         'fret_depart' => $this->buildSheetData($days, $regime, 'fret_depart', $commercialOps, $nonCommercialOps),
+        //         'exced_depart' => $this->buildSheetData($days, $regime, 'exced_depart', $commercialOps, $nonCommercialOps),
+        //         'operators' => [
+        //             'pax' => [
+        //                 'commercial' => $commercialOpsPax->pluck('sigle')->toArray(),
+        //                 'non_commercial' => $nonCommercialOpsPax->pluck('sigle')->toArray(),
+        //             ],
+        //             'fret' => [
+        //                 'commercial' => $commercialOps->pluck('sigle')->toArray(),
+        //                 'non_commercial' => $nonCommercialOps->pluck('sigle')->toArray(),
+        //             ],
+        //         ],
+        //     ];
+        // }
 
     }
 
@@ -280,42 +280,6 @@ class TraficReportController extends Controller
     }
 
     /**
-     * Récupère les opérateurs ayant des vols pour un régime donné
-     * La nature du vol est déterminée par la relation avec les flights,
-     * pas par une colonne dans la table operators
-     */
-    private function getOperators(bool $isCommercial, string $regime, bool $excludeCargoOnly = false): Collection
-    {
-        $natures = $isCommercial
-            ? [FlightNatureEnum::COMMERCIAL->value]
-            : collect(FlightNatureEnum::nonCommercial())->pluck('value')->toArray();
-
-        $query = Operator::whereHas('flights', function ($q) use ($regime, $natures) {
-            $q->where('flight_regime', $regime)
-                ->whereIn('flight_nature', $natures)
-                ->where('status', FlightStatusEnum::DEPARTED);
-        });
-
-        // Pour le sheet PAX : exclure les opérateurs qui n'ont QUE des vols cargo
-        if ($excludeCargoOnly) {
-            $query->whereHas('flights', function ($q) use ($regime, $natures) {
-                $q->where('flight_regime', $regime)
-                    ->whereIn('flight_nature', $natures)
-                    ->where('status', FlightStatusEnum::DEPARTED)
-                    ->whereHas('statistic', function ($sq) {
-                        $sq->where(function ($s) {
-                            $s->where('passengers_count', '>', 0)
-                                ->orWhere('pax_bus', '>', 0)
-                                ->orWhere('go_pass_count', '>', 0);
-                        });
-                    });
-            });
-        }
-
-        return $query->orderBy('sigle')->get();
-    }
-
-    /**
      * Récupère la valeur d'une métrique spécifique
      */
     private function getMetricValue(
@@ -513,6 +477,38 @@ class TraficReportController extends Controller
             $fileName
         );
    }
+
+       /**
+     * Récupère les opérateurs ayant des vols pour un régime donné
+     * La nature du vol est déterminée par la relation avec les flights,
+     * pas par une colonne dans la table operators
+     */
+    private function getOperators(string $regime, bool $excludeCargoOnly = false): Collection
+    {
+        $query = Operator::whereHas('flights', function ($q) use ($regime) {
+            $q->where('flight_regime', $regime)
+                ->where('flight_nature', FlightNatureEnum::COMMERCIAL->value)
+                ->where('status', FlightStatusEnum::DEPARTED);
+        });
+
+        // Pour le sheet PAX : exclure les opérateurs qui n'ont QUE des vols cargo
+        if ($excludeCargoOnly) {
+            $query->whereHas('flights', function ($q) use ($regime) {
+                $q->where('flight_regime', $regime)
+                    ->where('flight_nature', FlightNatureEnum::COMMERCIAL->value)
+                    ->where('status', FlightStatusEnum::DEPARTED)
+                    ->whereHas('statistic', function ($sq) {
+                        $sq->where(function ($s) {
+                            $s->where('passengers_count', '>', 0)
+                                ->orWhere('pax_bus', '>', 0)
+                                ->orWhere('go_pass_count', '>', 0);
+                        });
+                    });
+            });
+        }
+
+        return $query->orderBy('sigle')->get();
+    }
 
     /**
      * Vérifie s'il y a des données de vols pour une année ou un mois spécifique

@@ -2,16 +2,17 @@
 
 namespace App\Http\Controllers\Api;
 
-use Carbon\Carbon;
-use App\Models\Flight;
-use App\Models\Operator;
-use App\Helpers\ApiResponse;
-use App\Enums\FlightTypeEnum;
 use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
+use App\Enums\FlightTypeEnum;
+use App\Exports\Idef\IdefReportExport;
+use App\Helpers\ApiResponse;
+use App\Http\Controllers\Controller;
+use App\Models\Flight;
+use App\Models\Operator;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
-use App\Http\Controllers\Controller;
 use Maatwebsite\Excel\Facades\Excel;
 
 class IdefReportController extends Controller
@@ -48,9 +49,7 @@ class IdefReportController extends Controller
             return [
                 'pax' => $this->buildSheetData($days, $regime, 'pax', $paxOperators, $allOperators),
                 'fret_depart' => $this->buildSheetData($days, $regime, 'fret_depart', $paxOperators, $allOperators),
-                'fret_arrivee' => $this->buildSheetData($days, $regime, 'fret_arrivee', $paxOperators, $allOperators),
                 'exced_depart' => $this->buildSheetData($days, $regime, 'exced_depart', $paxOperators, $allOperators),
-                'exced_arrivee' => $this->buildSheetData($days, $regime, 'exced_arrivee', $paxOperators, $allOperators),
                 'operators' => [
                     'pax' => $paxOperators->pluck('sigle')->toArray(),
                     'fret' => $allOperators->pluck('sigle')->toArray(),
@@ -58,6 +57,48 @@ class IdefReportController extends Controller
             ];
         }
     }
+
+        /**
+     * Exporte le rapport mensuel en Excel
+     */
+    public function monthlyExportReport(string $month = '11', string $year = '2025')
+    {
+        // On force le format int pour éviter les erreurs de type
+        $monthInt = (int) $month;
+        $yearInt = (int) $year;
+        $internationalData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+
+        // Vérifier si une erreur a été retournée
+        if ($internationalData instanceof \Illuminate\Http\JsonResponse) {
+            return $internationalData;
+        }
+
+        $domesticData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::DOMESTIC->value);
+
+        // Vérifier si une erreur a été retournée
+        if ($domesticData instanceof \Illuminate\Http\JsonResponse) {
+            return $domesticData;
+        }
+
+        $monthName = $this->getMonthName($monthInt);
+
+        $fileName = sprintf(
+            'IDEF_%s_%s.xlsx',
+            $monthName,
+            $year
+        );
+
+        return Excel::download(
+            new IdefReportExport(
+                $monthName,
+                $yearInt,
+                $internationalData,
+                $domesticData
+            ),
+            $fileName
+        );
+    }
+
 
     /**
      * Construit les données pour une feuille (une métrique spécifique)
@@ -133,7 +174,7 @@ class IdefReportController extends Controller
         foreach ($stats as $flight) {
             $stat = $flight->statistic;
             if (!$stat) continue;
-
+            
             // Totaux standards
             $totals['pax']['trafic'] += (int)($stat->passengers_count ?? 0);
             $totals['pax']['gopass'] += (int)($stat->go_pass_count ?? 0);

@@ -1,15 +1,16 @@
 <?php
 
-use App\Http\Controllers\Api\AircraftController;
-use App\Http\Controllers\Api\AircraftTypeController;
-use App\Http\Controllers\Api\AuthController;
-use App\Http\Controllers\Api\FlightController;
-use App\Http\Controllers\Api\FlightJustificationController;
-use App\Http\Controllers\Api\OperatorController;
-use App\Http\Controllers\Api\PaxbusReportController;
-use App\Http\Controllers\Api\TraficReportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AuthController;
+use App\Http\Controllers\Api\FlightController;
+use App\Http\Controllers\Api\AircraftController;
+use App\Http\Controllers\Api\OperatorController;
+use App\Http\Controllers\Api\IdefReportController;
+use App\Http\Controllers\Api\AircraftTypeController;
+use App\Http\Controllers\Api\PaxbusReportController;
+use App\Http\Controllers\Api\TraficReportController;
+use App\Http\Controllers\Api\FlightJustificationController;
 
 // Authentication routes
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
@@ -63,6 +64,25 @@ Route::prefix('paxbus-report')->group(function () {
     Route::get('/weekly/{quinzaine}/{month}/{year}/{regime}', [
         PaxbusReportController::class,
         'weeklyReport',
+    ]);
+});
+
+Route::prefix('idef-report')->group(function () {
+    Route::get('/yearly/export/{year?}', [
+        IdefReportController::class,
+        'exportYearlyReport',
+    ]);
+    Route::get('/monthly/export/{month?}/{year?}', [
+        IdefReportController::class,
+        'monthlyExportReport',
+    ]);
+    Route::get('/yearly/{year?}/{regime?}', [
+        IdefReportController::class,
+        'yearlyReport',
+    ]);
+    Route::get('/monthly/{month?}/{year?}/{regime?}', [
+        IdefReportController::class,
+        'monthlyReport',
     ]);
 });
 

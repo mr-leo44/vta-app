@@ -145,7 +145,18 @@ class PaxbusReportController extends Controller
         $yearInt = (int) $year;
 
         $internationalData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($internationalData instanceof \Illuminate\Http\JsonResponse) {
+            return $internationalData;
+        }
+        
         $domesticData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::DOMESTIC->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($domesticData instanceof \Illuminate\Http\JsonResponse) {
+            return $domesticData;
+        }
 
         $monthName = $this->getMonthName($monthInt);
         $fileName = sprintf(
@@ -285,7 +296,18 @@ class PaxbusReportController extends Controller
         $yearInt = (int) $year;
 
         $internationalData = $this->yearlyReport($yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($internationalData instanceof \Illuminate\Http\JsonResponse) {
+            return $internationalData;
+        }
+        
         $domesticData = $this->yearlyReport($yearInt, FlightRegimeEnum::DOMESTIC->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($domesticData instanceof \Illuminate\Http\JsonResponse) {
+            return $domesticData;
+        }
 
         $fileName = sprintf(
             'RAPPORT_ANNUEL_PAX_BUS_%s.xlsx',
@@ -306,10 +328,18 @@ class PaxbusReportController extends Controller
     /**
      * Génère le rapport hebdomadaire (quinzaine)
      */
-    public function weeklyReport(string $quinzaine, int $month, int $year, string $regime): array
+    public function weeklyReport(string $quinzaine, int $month, int $year, string $regime): array|\Illuminate\Http\JsonResponse
     {
         // Déterminer la plage de dates selon la quinzaine
         [$startDate, $endDate] = $this->getQuinzaineDates($quinzaine, $month, $year);
+
+        // Vérifier s'il y a des données de vols pour cette quinzaine et ce régime
+        $query = Flight::where('flight_regime', $regime)
+            ->whereBetween('departure_time', [$startDate, $endDate]);
+        
+        if (!$query->exists()) {
+            return ApiResponse::error('Pas de données disponibles', 400);
+        }
 
         $days = $this->getDaysInRange($startDate, $endDate);
         $operators = $this->getOperators($regime);
@@ -454,7 +484,15 @@ class PaxbusReportController extends Controller
         $yearInt = (int) $year;
 
         $internationalData = $this->weeklyReport($quinzaine, $monthInt, $yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        $internationalError = $internationalData instanceof \Illuminate\Http\JsonResponse;
+        
         $domesticData = $this->weeklyReport($quinzaine, $monthInt, $yearInt, FlightRegimeEnum::DOMESTIC->value);
+        $domesticError = $domesticData instanceof \Illuminate\Http\JsonResponse;
+
+        // Si les deux régimes retournent une erreur, retourner l'erreur
+        if ($internationalError && $domesticError) {
+            return $internationalData;
+        }
 
         $monthName = $this->getMonthName($monthInt);
         $fileName = sprintf(
@@ -469,8 +507,8 @@ class PaxbusReportController extends Controller
                 $quinzaine,
                 $monthName,
                 $yearInt,
-                $internationalData,
-                $domesticData
+                $internationalError ? [] : $internationalData,
+                $domesticError ? [] : $domesticData
             ),
             $fileName
         );

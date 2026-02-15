@@ -2,6 +2,7 @@
 
 namespace App\Exports\Traffic;
 
+use App\Exports\Traffic\TraficStatSheet;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
 class TraficReportExport implements WithMultipleSheets
@@ -77,18 +78,6 @@ class TraficReportExport implements WithMultipleSheets
                 $this->internationaldata['operators']['fret']
             ),
         ];
-
-        // if ($this->regime === "international") {
-        //     return [
-        //
-
-        //     ];
-        // }
-
-        // return [
-        //
-        //
-        // ];
     }
 
     private function getMonth(string $month): string

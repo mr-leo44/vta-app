@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers\Api;
 
+use Carbon\Carbon;
+use App\Models\Flight;
+use App\Models\Operator;
+use App\Helpers\ApiResponse;
+use App\Enums\FlightTypeEnum;
 use App\Enums\FlightNatureEnum;
 use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
@@ -14,7 +19,10 @@ use App\Models\Flight;
 use App\Models\Operator;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
+use App\Http\Controllers\Controller;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\Traffic\TraficReportExport;
+use App\Exports\Traffic\TraficReportAnnualExport;
 
 class TraficReportController extends Controller
 {
@@ -445,7 +453,19 @@ class TraficReportController extends Controller
         $monthInt = (int) $month;
         $yearInt = (int) $year;
         $internationalData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($internationalData instanceof \Illuminate\Http\JsonResponse) {
+            return $internationalData;
+        }
+        
         $domesticData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::DOMESTIC->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($domesticData instanceof \Illuminate\Http\JsonResponse) {
+            return $domesticData;
+        }
+        
         $monthName = $this->getMonthName($monthInt);
 
         $fileName = sprintf(
@@ -473,7 +493,18 @@ class TraficReportController extends Controller
         $yearInt = (int) $year;
 
         $internationalData = $this->yearlyReport($yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($internationalData instanceof \Illuminate\Http\JsonResponse) {
+            return $internationalData;
+        }
+        
         $domesticData = $this->yearlyReport($yearInt, FlightRegimeEnum::DOMESTIC->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($domesticData instanceof \Illuminate\Http\JsonResponse) {
+            return $domesticData;
+        }
 
         $fileName = sprintf(
             'TRAFIC_ANNUEL_%s.xlsx',

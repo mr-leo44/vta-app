@@ -131,7 +131,7 @@ class SynthStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 $highestCol = $s->getHighestColumn();
                 $highestColIndex = Coordinate::columnIndexFromString($highestCol);
 
-                // Lignes 1-3 : Alignées à gauche
+                // Lignes 1-4 : Alignées à gauche
                 for ($row = 1; $row <= 4; $row++) {
                     $s->mergeCells("A{$row}:{$highestCol}{$row}");
                     $s->getStyle("A{$row}")->getFont()->setBold(false)->setSize(12);

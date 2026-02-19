@@ -5,12 +5,11 @@ namespace App\Http\Controllers\Api;
 use Carbon\Carbon;
 use App\Models\Flight;
 use App\Models\Operator;
-use App\Helpers\ApiResponse;
-use App\Enums\FlightTypeEnum;
 use App\Enums\FlightNatureEnum;
 use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
-use Illuminate\Http\JsonResponse;
+use App\Enums\FlightTypeEnum;
+use App\Helpers\ApiResponse;
 use Illuminate\Support\Collection;
 use App\Http\Controllers\Controller;
 use Maatwebsite\Excel\Facades\Excel;
@@ -22,7 +21,7 @@ class TraficReportController extends Controller
     /**
      * Génère le rapport mensuel par regime avec datasets (un par métrique)
      */
-    public function monthlyReport(string|int $month, string|int $year, string $regime): array|JsonResponse
+    public function monthlyReport(string|int $month, string|int $year, string $regime): array|\Illuminate\Http\JsonResponse
     {
         // On force la conversion en entier pour la logique interne (getDaysOfMonth, etc.)
         $month = (int) $month;

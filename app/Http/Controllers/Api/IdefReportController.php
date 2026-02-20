@@ -36,10 +36,10 @@ class IdefReportController extends Controller
         if ($regime == FlightRegimeEnum::INTERNATIONAL->value) {
             return [
                 'pax' => $this->buildSheetData($days, $regime, 'pax', $paxOperators, $allOperators),
-                'fret_depart' => $this->buildSheetData($days, $regime, 'fret_depart', $paxOperators, $allOperators),
-                'fret_arrivee' => $this->buildSheetData($days, $regime, 'fret_arrivee', $paxOperators, $allOperators),
-                'exced_depart' => $this->buildSheetData($days, $regime, 'exced_depart', $paxOperators, $allOperators),
-                'exced_arrivee' => $this->buildSheetData($days, $regime, 'exced_arrivee', $paxOperators, $allOperators),
+                'fret' => $this->buildSheetData($days, $regime, 'fret', $paxOperators, $allOperators),
+                // 'fret_arrivee' => $this->buildSheetData($days, $regime, 'fret_arrivee', $paxOperators, $allOperators),
+                'exced' => $this->buildSheetData($days, $regime, 'exced', $paxOperators, $allOperators),
+                // 'exced_arrivee' => $this->buildSheetData($days, $regime, 'exced_arrivee', $paxOperators, $allOperators),
                 'operators' => [
                     'pax' => $paxOperators->pluck('sigle')->toArray(),
                     'fret' => $allOperators->pluck('sigle')->toArray(),
@@ -48,8 +48,8 @@ class IdefReportController extends Controller
         } else {
             return [
                 'pax' => $this->buildSheetData($days, $regime, 'pax', $paxOperators, $allOperators),
-                'fret_depart' => $this->buildSheetData($days, $regime, 'fret_depart', $paxOperators, $allOperators),
-                'exced_depart' => $this->buildSheetData($days, $regime, 'exced_depart', $paxOperators, $allOperators),
+                'fret' => $this->buildSheetData($days, $regime, 'fret', $paxOperators, $allOperators),
+                'exced' => $this->buildSheetData($days, $regime, 'exced', $paxOperators, $allOperators),
                 'operators' => [
                     'pax' => $paxOperators->pluck('sigle')->toArray(),
                     'fret' => $allOperators->pluck('sigle')->toArray(),
@@ -58,7 +58,7 @@ class IdefReportController extends Controller
         }
     }
 
-        /**
+    /**
      * Exporte le rapport mensuel en Excel
      */
     public function monthlyExportReport(string $month = '11', string $year = '2025')
@@ -159,29 +159,53 @@ class IdefReportController extends Controller
 
         $stats = $flights->get();
 
-        $totals = [
-            'pax' => [
-                'trafic' => 0,
-                'gopass' => 0,
-                'justifications' => []
-            ],
-            'fret_depart' => 0,
-            'fret_arrivee' => 0,
-            'exced_depart' => 0,
-            'exced_arrivee' => 0,
-        ];
+        if ($regime === FlightRegimeEnum::INTERNATIONAL->value) {
+            $totals = [
+                'pax' => [
+                    'trafic' => 0,
+                    'gopass' => 0,
+                    'justifications' => []
+                ],
+                'fret' => [
+                    'departure' => 0,
+                    'arrival' => 0
+                ],
+                'exced' => [
+                    'departure' => 0,
+                    'arrival' => 0
+                ],
+            ];
+        } else {
+            $totals = [
+                'pax' => [
+                    'trafic' => 0,
+                    'gopass' => 0,
+                    'justifications' => []
+                ],
+                'fret' =>  0,
+                'exced' => 0
+            ];
+        }
 
         foreach ($stats as $flight) {
             $stat = $flight->statistic;
             if (!$stat) continue;
-            
+
             // Totaux standards
-            $totals['pax']['trafic'] += (int)($stat->passengers_count ?? 0);
-            $totals['pax']['gopass'] += (int)($stat->go_pass_count ?? 0);
-            $totals['fret_depart']   += (int)($stat->fret_count['departure'] ?? 0);
-            $totals['fret_arrivee']  += (int)($stat->fret_count['arrival'] ?? 0);
-            $totals['exced_depart']  += (int)($stat->excedents['departure'] ?? 0);
-            $totals['exced_arrivee'] += (int)($stat->excedents['arrival'] ?? 0);
+            if ($regime === FlightRegimeEnum::INTERNATIONAL->value) {
+                $totals['pax']['trafic'] += (int)($stat->passengers_count ?? 0);
+                $totals['pax']['gopass'] += (int)($stat->go_pass_count ?? 0);
+                $totals['fret']['departure']   += (int)($stat->fret_count['departure'] ?? 0);
+                $totals['fret']['arrival']  += (int)($stat->fret_count['arrival'] ?? 0);
+                $totals['exced']['departure']  += (int)($stat->excedents['departure'] ?? 0);
+                $totals['exced']['arrival'] += (int)($stat->excedents['arrival'] ?? 0);
+            } else {
+                $totals['pax']['trafic'] += (int)($stat->passengers_count ?? 0);
+                $totals['pax']['gopass'] += (int)($stat->go_pass_count ?? 0);
+                $totals['fret'] += (int)($stat->fret_count['departure'] ?? 0);
+                $totals['exced'] += (int)($stat->excedents['departure'] ?? 0);
+
+            }
 
             // Traitement des justifications
             if ($stat->has_justification && is_array($stat->justification)) {

@@ -168,7 +168,7 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                         ->getFont()
                         ->setSize(14);
                     $s->getStyle("E{$row}")
-                        ->getFont()->setSize(13);
+                        ->getFont()->setSize(14);
                     $s->getStyle("E{$row}")
                         ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
 

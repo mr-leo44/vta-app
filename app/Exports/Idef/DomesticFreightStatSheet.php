@@ -63,7 +63,7 @@ class DomesticFreightStatSheet implements WithTitle, ShouldAutoSize, FromArray, 
         foreach ($this->rows as $row) {
             $date = [$row['DATE'] ?? ''];
             array_shift($row); // Remove the first row which contains the date
-            $totalFreight = $this->getFretDatas($row);
+            $totalFreight = $this->getFreightDatas($row);
 
             $data[] = array_merge($date, $totalFreight);
         }
@@ -243,22 +243,7 @@ class DomesticFreightStatSheet implements WithTitle, ShouldAutoSize, FromArray, 
         ];
     }
 
-    private function freightData($dayValues, $trafficFret, $idefFret): array
-    {
-        array_shift($dayValues); // Remove 'DATE' key
-        foreach ($dayValues as $key => $value) {
-            if ($key === 'UN') {
-                $trafficFret += (int)$value;
-            } else {
-                $trafficFret += (int)$value;
-                $idefFret += (int)$value;
-            }
-        }
-
-        return [$trafficFret, $idefFret];
-    }
-
-    private function getFretDatas($fretDatas): array
+    private function getFreightDatas($fretDatas): array
     {
         $trafficFret = 0;
         $idefFret = 0;

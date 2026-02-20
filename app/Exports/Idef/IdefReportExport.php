@@ -2,6 +2,7 @@
 
 namespace App\Exports\Idef;
 
+use App\Exports\Idef\DomesticFreightStatSheet;
 use App\Exports\Idef\EcartStatSheet;
 use App\Exports\Idef\PAXStatSheet;
 use App\Exports\Idef\SynthStatSheet;
@@ -52,18 +53,22 @@ class IdefReportExport implements WithMultipleSheets
                 "SITUATION  PASSAGERS EMBARQUES ET  GO-PASS  RAMASSES INTERNATIONAL $selectedMonth $year",
                 $this->internationaldata['pax']
             ),
-            // new TraficStatSheet(
-            //     'FRET NAT',
-            //     "EXCEDENT FRET INTERNATIONAL DEPART $selectedMonth $year",
-            //     $this->internationaldata['exced_depart'],
-            //     $this->internationaldata['operators']['fret']
-            // ),
-            // new TraficStatSheet(
-            //     'EXCED FRET NAT',
-            //     "FRET INTERNATIONAL ARRIVEE $selectedMonth $year",
-            //     $this->internationaldata['fret_arrivee'],
-            //     $this->internationaldata['operators']['fret']
-            // ),
+            new DomesticFreightStatSheet(
+                'FRET NAT',
+                "STATISTIQUES MENSUELLES FRETS  EMBARQUES ET FRETS IDEF",
+                "EMBARQUES VOLS NATIONAUX $selectedMonth $year",
+                $this->domesticData['fret_depart'],
+                $this->domesticData['operators']['fret'],
+                "ANNEXE VII"
+            ),
+            new DomesticFreightStatSheet(
+                'EXCED FRET NAT',
+                "STATISTIQUES MENSUELLES EXCEDANT BAGAGE FRETS  EMBARQUES ET FRETS IDEF",
+                "EMBARQUES VOLS NATIONAUX $selectedMonth $year",
+                $this->domesticData['exced_depart'],
+                $this->domesticData['operators']['fret'],
+                "ANNEXE VIII"
+            ),
             // new TraficStatSheet(
             //     'FRET EXON NAT',
             //     "EXCEDENT FRET INTERNATIONAL ARRIVEE $selectedMonth $year",

@@ -19,13 +19,15 @@ class SynthStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
     protected $title;
     protected $domesticRows;
     protected $internationalRows;
+    protected $annexNumber;
 
-    public function __construct(string $sheetTitle, string $title, array $domesticRows, array $internationalRows)
+    public function __construct(string $sheetTitle, string $title, array $domesticRows, array $internationalRows, string $annexNumber)
     {
         $this->sheetTitle = $sheetTitle;
         $this->title = $title;
         $this->domesticRows = $domesticRows;
         $this->internationalRows = $internationalRows;
+        $this->annexNumber = $annexNumber;
     }
 
     public function title(): string
@@ -67,11 +69,9 @@ class SynthStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
         $data[] = $domesticPaxRow;
 
         // DONNEES FRET NATIONAUX
-        $domesticFretDatas = $this->domesticRows['fret_depart'] ?? [];
-        $domesticExcedentData = $this->domesticRows['exced_depart'] ?? [];
-
+        $domesticFretDatas = $this->domesticRows['fret'] ?? [];
+        $domesticExcedentData = $this->domesticRows['exced'] ?? [];
         $domesticFretRow = $this->getFretDatas($domesticFretDatas, $domesticExcedentData, 'b. FRET EMBARQUE');
-        // $domesticFretRow = ['b. FRET EMBARQUE', $domesticTrafficFret, $DomesticIdefFret, $domesticTrafficFret - $DomesticIdefFret];
         $data[] = $domesticFretRow;
 
         $header4 = ['2. VOLS INTERNATIONAUX', '', '', ''];
@@ -82,13 +82,12 @@ class SynthStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
         $data[] = $internationalPaxRow;
 
         // DONNEES FRET INTERNATIONAUX
-        $internationalepartureFretDatas = $this->internationalRows['fret_depart'] ?? [];
-        $internationalDepartureExcedentData = $this->internationalRows['exced_depart'] ?? [];
-        $internationalArrivalFretDatas = $this->internationalRows['fret_arrivee'] ?? [];
-        $internationalArrivalExcedentData = $this->internationalRows['exced_arrivee'] ?? [];
-
-        $internationalDepartureRow = $this->getFretDatas($internationalepartureFretDatas, $internationalDepartureExcedentData, 'b. FRET EMBARQUE');
-        $internationalArrivalRow = $this->getFretDatas($internationalArrivalFretDatas, $internationalArrivalExcedentData, 'c. FRET DEBARQUE');
+        $internationalDepartureFretDatas = $this->getFormattedFretOrExcedentdatas($this->internationalRows['fret'])['departure'] ?? [];
+        $internationalDepartureExcedentDatas = $this->getFormattedFretOrExcedentdatas($this->internationalRows['exced'])['departure'] ?? [];
+        $internationalArrivalFretDatas = $this->getFormattedFretOrExcedentdatas($this->internationalRows['fret'])['arrival'] ?? [];
+        $internationalArrivalExcedentDatas = $this->getFormattedFretOrExcedentdatas($this->internationalRows['exced'])['arrival'] ?? [];
+        $internationalDepartureRow = $this->getFretDatas($internationalDepartureFretDatas, $internationalDepartureExcedentDatas, 'b. FRET EMBARQUE');
+        $internationalArrivalRow = $this->getFretDatas($internationalArrivalFretDatas, $internationalArrivalExcedentDatas, 'c. FRET DEBARQUE');
         $data[] = $internationalDepartureRow;
         $data[] = $internationalArrivalRow;
 
@@ -241,13 +240,39 @@ class SynthStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
         ];
     }
 
+    private function getFormattedFretOrExcedentdatas($dataRows): array
+    {
+        $departureDatas = [];
+        $arrivalDatas = [];
+        foreach ($dataRows as $rows) {
+            $daylyDepartureArray = [];
+            $daylyArrivalArray = [];
+            foreach ($rows as $key => $value) {
+                $date = ['DATE' => $rows['DATE']];
+                if ($key === 'DATE') continue;
+                if (isset($value['departure'])) {
+                    $daylyDepartureArray[$key] = $value['departure'];
+                }
+                if (isset($value['arrival'])) {
+                    $daylyArrivalArray[$key] = $value['arrival'];
+                }
+            }
+            $departureDatas[] = array_merge($date, $daylyDepartureArray);
+            $arrivalDatas[] = array_merge($date, $daylyArrivalArray);
+        }
+
+        return [
+            'departure' => $departureDatas,
+            'arrival' => $arrivalDatas
+        ];
+    }
+
     private function getFretDatas($fretDatas, $excedentDatas, $libelle): array
     {
         $trafficFret = 0;
         $idefFret = 0;
         foreach ($fretDatas as $key => $dayValues) {
             [$trafficFret, $idefFret] = $this->freightData($dayValues, $trafficFret, $idefFret);
-            // $this->freightData($dayValues);
         }
 
         foreach ($excedentDatas as $key => $dayValues) {

@@ -13,27 +13,34 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
-class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
+class InternationalFreightStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
 {
     protected $sheetTitle;
     protected $title;
+    protected $subTitle;
     protected $rows;
+    protected $operators;
+    protected $annexeNumber;
 
-    public function __construct(string $sheetTitle, string $title, array $rows)
+
+    public function __construct(string $sheetTitle, string $title, string $subTitle, array $rows, array $operators, string $annexeNumber)
     {
+        $this->rows = $rows;
+        $this->operators = $operators;
         $this->sheetTitle = $sheetTitle;
         $this->title = $title;
-        $this->rows = $rows;
+        $this->subTitle = $subTitle;
+        $this->annexeNumber = $annexeNumber;
     }
 
     public function title(): string
     {
-        return substr($this->sheetTitle, 0, 31); //$this->sheetTitle;
+        return substr($this->sheetTitle, 0, 50);
     }
 
     public function array(): array
     {
-        $cols = 5; // DATE + PAX + GOPASS + ECART + JUSTIFICATIFS
+        $cols = 10; // DATE + TOTAL FRET (DEB/EMB) + TOTAL FRET IDEF (DEB/EMB) + ECART (EXONERE) (DEB/EMB) + PERCEPTION ESTIMEE HORS DGDA (DEB/EMB + TOTAL)
         $data = [];
 
         // TITRES
@@ -43,42 +50,31 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 ['BUREAU IDEF'],
                 ["RVA AERO/N'DJILI"],
                 ["DIVISION COMMERCIALE"],
-                ['', 'SYNTHESE'],
+                ['', $this->annexeNumber],
                 [$this->title],
+                [$this->subTitle]
             ] as $line
         ) {
             $data[] = array_pad($line, $cols, '');
         }
         // EN-TÊTES
-        $data[] = ['DATE', 'NOMBRE PAX EMBARQUES', 'NOMBRE DES GO-PASS RAMASSES', 'ECART', 'JUSTIFICATIONS'];
+        $data[] = ['DATE', 'TOTAL FRET', '', 'TOTAL FRET IDEF', '', 'ECART (EXONERE)', '', 'PERCEPTION ESTIMEE HORS DGDA', '', '']; // En-têtes des colonnes
+        $data[] = ['', 'DEBARQUE', 'EMBARQUE', 'DEBARQUE', 'EMBARQUE', 'DEBARQUE', 'EMBARQUE', 'F.DEB(0,007/kg)', 'F.EMB(0,005/kg)', 'TOTAL']; // Ligne vide pour séparer les titres des données
+        $totalFreightOrExcedentsDatas = $this->getFreightOrExecedentDatas($this->rows);
+        $data = array_merge($data,$totalFreightOrExcedentsDatas);
+        $data[] = ['TOTAL', '', '', '', '', '', '', '', '', '']; // Total line
 
-        // ✅ DONNÉES : On ne met QUE les dates, le reste sera écrit dans AfterSheet
-        foreach ($this->rows as $row) {
-            $dataRow = [$row['DATE'] ?? ''];
-            $totalPax = 0;
-            $totalGopass = 0;
-            array_shift($row); // Remove the first row which contains the date
-            foreach ($row as $key => $value) {
-                $totalPax += $value['trafic'];
-                $totalGopass += $value['gopass'];
-            }
-            $dataRow[] = $totalPax;
-            $dataRow[] = $totalGopass;
-            $dataRow[] = $totalPax - $totalGopass;
-            $dataRow[] = $this->getDayJustifications($row); // Placeholder for justifications
-            $data[] = $dataRow;
-        }
-        $data[] = ['TOTAL', '', '', '', '']; // Total line
+
+        // LIGNES VIDES AVANT SIGNATURE
+        $data[] = array_fill(0, $cols, '');
 
         // SIGNATURE
-        $data[] = array_fill(0, $cols, "");
-
         $sig1 = array_fill(0, $cols, '');
-        $sig1[$cols - 1] = 'LE CHEF DE BUREAU IDEF';
+        $sig1[$cols - 3] = 'LE CHEF DE BUREAU IDEF';
         $data[] = $sig1;
 
         $sig2 = array_fill(0, $cols, '');
-        $sig2[$cols - 1] = 'BANZE LUKUNGAY';
+        $sig2[$cols - 3] = 'BANZE LUKUNGAY';
         $data[] = $sig2;
         return $data;
     }
@@ -88,8 +84,6 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $s = $event->sheet->getDelegate();
-
-                // ORIENTATION + FIT TO PAGE
                 $s->getPageSetup()
                     ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
                     ->setFitToPage(true)
@@ -108,7 +102,9 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 $lastDataRow = $highestRow - 3; // La ligne avant les 2 lignes de signature + la ligne TOTAL
                 $highestCol = $s->getHighestColumn();
                 $highestColIndex = Coordinate::columnIndexFromString($highestCol);
-
+                // LIGNES DE DONNÉES
+                $headerRow = 8; // La ligne où commencent les données (après les titres)          
+                $firstDataRow = $headerRow + 2; // La ligne où commencent les données (après les titres et la ligne vide)
 
                 // Lignes 1-4 : Alignées à gauche
                 for ($row = 1; $row <= 4; $row++) {
@@ -120,9 +116,6 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 }
 
                 $s->getStyle("B5")->getFont()->setBold(false)->setSize(14);
-                $s->getStyle("B5")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                    ->setVertical(Alignment::VERTICAL_CENTER);
                 // Ligne 5 : TITRE PRINCIPAL (CENTRÉ)
                 $s->mergeCells("A6:{$highestCol}6");
                 $s->getStyle("A6")->getFont()->setBold(true)->setSize(16);
@@ -132,10 +125,14 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 $s->getStyle("A6")
                     ->getFill()->setFillType('solid')
                     ->getStartColor()->setARGB('FFD9E1F2');
-
-                // LIGNES DE DONNÉES
-                $headerRow = 7; // La ligne où commencent les en-têtes de colonnes (LIBELLE, PAX/FRET TOTAL, etc.)
-                $firstDataRow = $headerRow + 1;
+                $s->mergeCells("A7:{$highestCol}7");
+                $s->getStyle("A7")->getFont()->setBold(true)->setSize(16);
+                $s->getStyle("A7")->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER) // ✅ Centré
+                    ->setVertical(Alignment::VERTICAL_CENTER);
+                $s->getStyle("A7")
+                    ->getFill()->setFillType('solid')
+                    ->getStartColor()->setARGB('FFD9E1F2');
 
                 // STYLE EN-TÊTES
                 $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
@@ -150,6 +147,17 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                     ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                     ->setVertical(Alignment::VERTICAL_CENTER);
 
+                $s->getStyle("A9:{$highestCol}9")
+                    ->getFont()->setBold(true)->setSize(13);
+                $s->getStyle("A9:{$highestCol}9")
+                    ->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
+                    ->setVertical(Alignment::VERTICAL_CENTER);
+
+                $s->mergeCells("B8:C8");
+                $s->mergeCells("D8:E8");
+                $s->mergeCells("F8:G8");
+                $s->mergeCells("H8:J8");
                 // BORDURES
                 $s->getStyle("A{$headerRow}:{$highestCol}{$lastDataRow}")
                     ->getBorders()->getAllBorders()
@@ -159,20 +167,16 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                     ->getFont()->setSize(14);
 
                 // STYLE DES LIGNES DE DONNÉES
-                for ($row = $headerRow + 1; $row <= $lastDataRow; $row++) {
-                    $s->getStyle("A{$row}:D{$row}")
+                for ($row = $firstDataRow; $row <= $lastDataRow; $row++) {
+                    $s->getStyle("A{$row}:{$highestCol}{$row}")
                         ->getAlignment()
                         ->setHorizontal(Alignment::HORIZONTAL_RIGHT)
                         ->setVertical(Alignment::VERTICAL_CENTER);
-                    $s->getStyle("A{$row}:D{$row}")
+                    $s->getStyle("A{$row}:{$highestCol}{$row}")
                         ->getFont()
                         ->setSize(14);
-                    $s->getStyle("E{$row}")
-                        ->getFont()->setSize(14);
-                    $s->getStyle("E{$row}")
-                        ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
 
-                    for ($colIndex = 2; $colIndex <= $highestColIndex - 1; $colIndex++) {
+                    for ($colIndex = 2; $colIndex <= $highestColIndex; $colIndex++) {
                         $colLetter = Coordinate::stringFromColumnIndex($colIndex);
                         $s->setCellValueExplicit("{$colLetter}{$row}", $s->getCell("{$colLetter}{$row}")->getValue(), DataType::TYPE_NUMERIC);
                     }
@@ -183,9 +187,9 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 // ═══════════════════════════════════════════════════════════
 
                 // Ligne TOTAUX : somme verticale pour chaque colonne
-                for ($col = 2; $col <= $highestColIndex - 1; $col++) {
+                for ($col = 2; $col <= $highestColIndex; $col++) {
                     $colLetter = Coordinate::stringFromColumnIndex($col);
-                    $latestDataRow = $lastDataRow - 1;
+                    $latestDataRow = $lastDataRow - 1; // La ligne avant la ligne TOTAL
                     $s->setCellValue(
                         "{$colLetter}{$lastDataRow}",
                         "=SUM({$colLetter}{$firstDataRow}:{$colLetter}{$latestDataRow})"
@@ -203,6 +207,7 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 $s->getStyle("A{$lastDataRow}:{$highestCol}{$lastDataRow}")
                     ->getBorders()->getBottom()
                     ->setBorderStyle(Border::BORDER_THIN);
+
                 // Hauteur des lignes
                 $s->getRowDimension($headerRow)->setRowHeight(25);
 
@@ -215,62 +220,76 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 $signatureRow2 = $signatureRow1 + 1;
 
                 // ✅ 2 colonnes à partir de la droite
+                $signatureStartColIndex = $highestColIndex - 2;
+                $signatureStartCol = Coordinate::stringFromColumnIndex($signatureStartColIndex);
                 $signatureEndCol = Coordinate::stringFromColumnIndex($highestColIndex);
-
                 // Ligne 1 : LE CHEF DE BUREAU IDEF
-                $s->getStyle("{$signatureEndCol}{$signatureRow1}")
+                $s->mergeCells("{$signatureStartCol}{$signatureRow1}:{$signatureEndCol}{$signatureRow1}");
+                $s->getStyle("{$signatureStartCol}{$signatureRow1}")
                     ->getFont()->setBold(true)->setSize(11);
-                $s->getStyle("{$signatureEndCol}{$signatureRow1}")
+                $s->getStyle("{$signatureStartCol}{$signatureRow1}")
                     ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 
                 // Ligne 2 : BANZE LUKUNGAY
-                $s->getStyle("{$signatureEndCol}{$signatureRow2}")
+                $s->mergeCells("{$signatureStartCol}{$signatureRow2}:{$signatureEndCol}{$signatureRow2}");
+                $s->getStyle("{$signatureStartCol}{$signatureRow2}")
                     ->getFont()->setBold(true)->setSize(12);
-                $s->getStyle("{$signatureEndCol}{$signatureRow2}")
+                $s->getStyle("{$signatureStartCol}{$signatureRow2}")
                     ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
             }
         ];
     }
 
-    private function getDayJustifications($row): string
+    private function getFreightOrExecedentDatas(array $rows): array
     {
-        $sumOfJustifications = [];
-        foreach ($row as $value) { // Parcours des valeurs de la ligne pour trouver les justifications
-            if (isset($value['justifications']) && !empty($value['justifications'])) { // Vérifie si des justifications existent
-                foreach ($value['justifications'] as $key => $justification) {
-                    if ($key === "Militaires") {
-                        if (!isset($sumOfJustifications[$key])) {
-                            $sumOfJustifications[$key] = [
-                                'sfr' => 0,
-                                'value' => 0
-                            ];
-                        }
-                        $sumOfJustifications[$key]['sfr'] += $justification['sfr'];
-                        $sumOfJustifications[$key]['value'] += $justification['value'];
-                    } else {
-                        if (!isset($sumOfJustifications[$key])) {
-                            $sumOfJustifications[$key] = 0;
-                        }
-                        $sumOfJustifications[$key] += $justification;
-                    }
+        $datas = [];
+
+        foreach ($rows as $key => $dailyData) {
+            $date = ['DATE' => $dailyData['DATE']] ?? '';
+            array_shift($dailyData); // Remove the first row which contains the date
+            
+            $valueDatas = $this->freightDaylyDatas($dailyData);
+            $datas[] = array_merge($date, $valueDatas);
+        }
+        return $datas;
+    }
+
+    private function freightDaylyDatas(array $dailyData): array
+    {
+        $departureTraficData = 0;
+        $departureIdefData = 0;
+        $arrivalTraficData = 0;
+        $arrivalIdefData = 0;
+
+        foreach ($dailyData as $key => $value) {
+            if (isset($value['departure'])) {
+                if ($key === 'UN') {
+                    $departureTraficData += $value['departure'];
+                } else {
+                    $departureTraficData += $value['departure'];
+                    $departureIdefData += $value['departure'];
+                }
+            }
+            if (isset($value['arrival'])) {
+                if ($key === 'UN') {
+                    $arrivalTraficData += $value['arrival'];
+                } else {
+                    $arrivalTraficData += $value['arrival'];
+                    $arrivalIdefData += $value['arrival'];
                 }
             }
         }
+        return [
+            $arrivalTraficData,
+            $departureTraficData,
+            $arrivalIdefData,
+            $departureIdefData,
+            $arrivalTraficData - $arrivalIdefData,
+            $departureTraficData - $departureIdefData,
+            $arrivalIdefData * 0.007,
+            $departureIdefData * 0.005,
+            ($arrivalIdefData * 0.007) + ($departureIdefData * 0.005)
 
-        $justificationParts = [];
-
-        foreach ($sumOfJustifications as $key => $value) {
-            if ($key === "Militaires") {
-                $count = $value['value'];
-                $sfr = $value['sfr'];
-                $label = $count > 1 ? "Militaires" : "Militaire";
-                $justificationParts[] = "{$value['value']} {$label} ({$sfr} sfr)";
-            } else {
-                $justificationParts[] = "{$value} {$key}";
-            }
-        }
-
-        $justificationStrings = implode(', ', $justificationParts);
-        return $sumOfJustifications == [] ? "RAS" : $justificationStrings;
+        ];
     }
 }

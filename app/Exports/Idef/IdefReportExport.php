@@ -2,7 +2,9 @@
 
 namespace App\Exports\Idef;
 
+use App\Exports\Idef\DomesticFreightStatSheet;
 use App\Exports\Idef\EcartStatSheet;
+use App\Exports\Idef\InternationalFreightStatSheet;
 use App\Exports\Idef\PAXStatSheet;
 use App\Exports\Idef\SynthStatSheet;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
@@ -52,47 +54,60 @@ class IdefReportExport implements WithMultipleSheets
                 "SITUATION  PASSAGERS EMBARQUES ET  GO-PASS  RAMASSES INTERNATIONAL $selectedMonth $year",
                 $this->internationaldata['pax']
             ),
-            // new TraficStatSheet(
-            //     'FRET NAT',
-            //     "EXCEDENT FRET INTERNATIONAL DEPART $selectedMonth $year",
-            //     $this->internationaldata['exced_depart'],
-            //     $this->internationaldata['operators']['fret']
-            // ),
-            // new TraficStatSheet(
-            //     'EXCED FRET NAT',
-            //     "FRET INTERNATIONAL ARRIVEE $selectedMonth $year",
-            //     $this->internationaldata['fret_arrivee'],
-            //     $this->internationaldata['operators']['fret']
-            // ),
-            // new TraficStatSheet(
-            //     'FRET EXON NAT',
-            //     "EXCEDENT FRET INTERNATIONAL ARRIVEE $selectedMonth $year",
-            //     $this->internationaldata['exced_arrivee'],
-            //     $this->internationaldata['operators']['fret']
-            // ),
-            // new TraficStatSheet(
-            //     'FRET INT',
-            //     "EXCEDENT FRET INTERNATIONAL DEPART $selectedMonth $year",
-            //     $this->internationaldata['exced_depart'],
-            //     $this->internationaldata['operators']['fret']
-            // ),
-            // new TraficStatSheet(
-            //     'EXCED FRET INT',
-            //     "FRET INTERNATIONAL ARRIVEE $selectedMonth $year",
-            //     $this->internationaldata['fret_arrivee'],
-            //     $this->internationaldata['operators']['fret']
-            // ),
-            // new TraficStatSheet(
-            //     'FRET EXON INT',
-            //     "EXCEDENT FRET INTERNATIONAL ARRIVEE $selectedMonth $year",
-            //     $this->internationaldata['exced_arrivee'],
-            //     $this->internationaldata['operators']['fret']
-            // ),
+            new DomesticFreightStatSheet(
+                'FRET NAT',
+                "STATISTIQUES MENSUELLES FRETS  EMBARQUES ET FRETS IDEF",
+                "EMBARQUES VOLS NATIONAUX $selectedMonth $year",
+                $this->domesticData['fret'],
+                $this->domesticData['operators']['fret'],
+                "ANNEXE V"
+            ),
+            new ExonerationStatSheet(
+                'FRET EXON NAT',
+                "STATISTIQUES MENSUELLES DES FRETS EXONERES PAR CATEGORIE D'EXONERATION VOLS NATIONAUX EMBARQUEE",
+                "$selectedMonth $year",
+                $this->domesticData['fret'],
+                $this->domesticData['operators']['fret'],
+                "ANNEXE VI"
+            ),
+            new DomesticFreightStatSheet(
+                'EXCED FRET NAT',
+                "STATISTIQUES MENSUELLES EXCEDANT BAGAGE FRETS  EMBARQUES ET FRETS IDEF",
+                "EMBARQUES VOLS NATIONAUX $selectedMonth $year",
+                $this->domesticData['exced'],
+                $this->domesticData['operators']['fret'],
+                "ANNEXE VII"
+            ),
+            new InternationalFreightStatSheet(
+                'FRET INTER',
+                "STATISTIQUES MENSUELLES FRETS DEBARQUES/EMBARQUES ET FRETS IDEF",
+                "DEBARQUES/EMBARQUES VOLS INTERNATIONAUX $selectedMonth $year",
+                $this->internationaldata['fret'],
+                $this->internationaldata['operators']['fret'],
+                "ANNEXE VIII"
+            ),
+            new ExonerationStatSheet(
+                'FRET EXON INT',
+                "STATISTIQUES MENSUELLES DES FRETS EXONERES PAR CATEGORIE D'EXONERATION VOLS INTERNATIONAUX EMBARQUEE",
+                "$selectedMonth $year",
+                $this->internationaldata['fret'],
+                $this->internationaldata['operators']['fret'],
+                "ANNEXE IX"
+            ),
+            new InternationalFreightStatSheet(
+                'EXCED FRET INT DEP ARR',
+                "STATISTIQUES MENSUELLES EXCEDANT BAGAGE FRETS  EMBARQUES ET FRETS IDEF",
+                "EMBARQUES VOLS INTERNATIONAUX $selectedMonth $year",
+                $this->internationaldata['exced'],
+                $this->internationaldata['operators']['fret'],
+                "ANNEXE X"
+            ),
             new SynthStatSheet(
                 'SYNTH',
                 "SYNTHESE STATISTIQUES MENSUELLES IDEF $selectedMonth $year",
                 $this->domesticData,
-                $this->internationaldata
+                $this->internationaldata,
+                "ANNEXE XI"
             ),
         ];
     }

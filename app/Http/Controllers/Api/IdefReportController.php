@@ -37,9 +37,7 @@ class IdefReportController extends Controller
             return [
                 'pax' => $this->buildSheetData($days, $regime, 'pax', $paxOperators, $allOperators),
                 'fret' => $this->buildSheetData($days, $regime, 'fret', $paxOperators, $allOperators),
-                // 'fret_arrivee' => $this->buildSheetData($days, $regime, 'fret_arrivee', $paxOperators, $allOperators),
                 'exced' => $this->buildSheetData($days, $regime, 'exced', $paxOperators, $allOperators),
-                // 'exced_arrivee' => $this->buildSheetData($days, $regime, 'exced_arrivee', $paxOperators, $allOperators),
                 'operators' => [
                     'pax' => $paxOperators->pluck('sigle')->toArray(),
                     'fret' => $allOperators->pluck('sigle')->toArray(),

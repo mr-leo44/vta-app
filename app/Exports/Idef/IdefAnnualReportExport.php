@@ -4,6 +4,7 @@ namespace App\Exports\Idef;
 
 use App\Exports\Idef\AnnualDomesticFreightStatSheet;
 use App\Exports\Idef\AnnualEcartStatSheet;
+use App\Exports\Idef\AnnualInternationalFreightStatSheet;
 use App\Exports\Idef\PAXAnnualStatSheet;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
@@ -65,6 +66,23 @@ class IdefAnnualReportExport implements WithMultipleSheets
                 $this->domesticData['operators']['fret'],
                 "ANNEXE VI"
             ),
+            new AnnualInternationalFreightStatSheet(
+                'FRET INTER',
+                "STATISTIQUES ANNUELLES FRETS DEBARQUES/EMBARQUES ET FRETS IDEF",
+                "DEBARQUES/EMBARQUES VOLS INTERNATIONAUX $year",
+                $this->internationaldata['fret'],
+                $this->internationaldata['operators']['fret'],
+                "ANNEXE VIII"
+            ),
+            new AnnualInternationalFreightStatSheet(
+                'EXCED FRET INT DEP ARR',
+                "STATISTIQUES ANNUELLES EXCEDANT BAGAGE FRETS EMBARQUES ET FRETS IDEF",
+                "EMBARQUES VOLS INTERNATIONAUX $year",
+                $this->internationaldata['exced'],
+                $this->internationaldata['operators']['fret'],
+                "ANNEXE X"
+            ),
+
         ];
     }
 }

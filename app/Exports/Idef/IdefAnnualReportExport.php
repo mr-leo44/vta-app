@@ -97,6 +97,13 @@ class IdefAnnualReportExport implements WithMultipleSheets
                 $this->internationaldata['operators']['fret'],
                 "ANNEXE IX"
             ),
+            new SynthStatSheet(
+                'SYNTH',
+                "SYNTHESE STATISTIQUES ANNUELLES IDEF $year",
+                $this->domesticData,
+                $this->internationaldata,
+                "ANNEXE XI"
+            )
         ];
     }
 }

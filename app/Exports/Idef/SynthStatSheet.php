@@ -37,7 +37,7 @@ class SynthStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
 
     public function array(): array
     {
-        $cols = 4; // DATE + 3 domestic + 1 international + TOTAL
+        $cols = 4; // DATE or MOIS + 3 domestic + 1 international + TOTAL
         $data = [];
 
         // TITRES
@@ -226,7 +226,7 @@ class SynthStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
         $trafficPax = 0;
         $idefPax = 0;
         foreach ($datas as $dayValues) {
-            array_shift($dayValues); // Remove 'DATE' key
+            array_shift($dayValues); // Remove 'DATE' or 'MOIS' key
             foreach ($dayValues as $value) {
                 $trafficPax += (int)$value['trafic'];
                 $idefPax += (int)$value['gopass'];
@@ -248,8 +248,8 @@ class SynthStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
             $daylyDepartureArray = [];
             $daylyArrivalArray = [];
             foreach ($rows as $key => $value) {
-                $date = ['DATE' => $rows['DATE']];
-                if ($key === 'DATE') continue;
+                $date = $rows['DATE'] ?? ['MOIS' => $rows['MOIS']];
+                if ($key === 'DATE' || $key === 'MOIS') continue;
                 if (isset($value['departure'])) {
                     $daylyDepartureArray[$key] = $value['departure'];
                 }
@@ -289,7 +289,7 @@ class SynthStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
 
     private function freightData($dayValues, $trafficFret, $idefFret): array
     {
-        array_shift($dayValues); // Remove 'DATE' key
+        array_shift($dayValues); // Remove 'DATE' or 'MOIS' key
         foreach ($dayValues as $key => $value) {
             if ($key === 'UN') {
                 $trafficFret += (int)$value;

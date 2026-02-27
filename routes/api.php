@@ -70,7 +70,7 @@ Route::prefix('paxbus-report')->group(function () {
 Route::prefix('idef-report')->group(function () {
     Route::get('/yearly/export/{year?}', [
         IdefReportController::class,
-        'exportYearlyReport',
+        'yearlyExportReport',
     ]);
     Route::get('/monthly/export/{month?}/{year?}', [
         IdefReportController::class,

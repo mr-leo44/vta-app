@@ -2,6 +2,7 @@
 
 namespace App\Exports\Idef;
 
+use App\Exports\Idef\AnnualDomesticFreightStatSheet;
 use App\Exports\Idef\AnnualEcartStatSheet;
 use App\Exports\Idef\PAXAnnualStatSheet;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
@@ -47,6 +48,14 @@ class IdefAnnualReportExport implements WithMultipleSheets
                 'ECART INT',
                 "SITUATION  PASSAGERS EMBARQUES ET  GO-PASS  RAMASSES INTERNATIONAL ANNUEL $year",
                 $this->internationaldata['pax']
+            ),
+            new AnnualDomesticFreightStatSheet(
+                'FRET NAT',
+                "STATISTIQUES ANNUELS FRETS EMBARQUES ET FRETS IDEF",
+                "EMBARQUES VOLS NATIONAUX $year",
+                $this->domesticData['fret'],
+                $this->domesticData['operators']['fret'],
+                "ANNEXE V"
             ),
         ];
     }

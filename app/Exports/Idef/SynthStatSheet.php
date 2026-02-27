@@ -248,7 +248,7 @@ class SynthStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
             $daylyDepartureArray = [];
             $daylyArrivalArray = [];
             foreach ($rows as $key => $value) {
-                $date = $rows['DATE'] ?? ['MOIS' => $rows['MOIS']];
+                $date = ['DATE' => $rows['DATE']] ?? ['MOIS' => $rows['MOIS']];
                 if ($key === 'DATE' || $key === 'MOIS') continue;
                 if (isset($value['departure'])) {
                     $daylyDepartureArray[$key] = $value['departure'];

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
 use App\Enums\FlightTypeEnum;
+use App\Exports\Idef\IdefAnnualReportExport;
 use App\Exports\Idef\IdefReportExport;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
@@ -33,11 +34,12 @@ class IdefReportController extends Controller
         $days = $this->getDaysOfMonth($month, $year);
         $paxOperators = $this->getOperators($regime, true);
         $allOperators = $this->getOperators($regime);
+
         if ($regime == FlightRegimeEnum::INTERNATIONAL->value) {
             return [
-                'pax' => $this->buildSheetData($days, $regime, 'pax', $paxOperators, $allOperators),
-                'fret' => $this->buildSheetData($days, $regime, 'fret', $paxOperators, $allOperators),
-                'exced' => $this->buildSheetData($days, $regime, 'exced', $paxOperators, $allOperators),
+                'pax' => $this->buildSheetData($days, $regime, 'pax', $allOperators),
+                'fret' => $this->buildSheetData($days, $regime, 'fret', $allOperators),
+                'exced' => $this->buildSheetData($days, $regime, 'exced', $allOperators),
                 'operators' => [
                     'pax' => $paxOperators->pluck('sigle')->toArray(),
                     'fret' => $allOperators->pluck('sigle')->toArray(),
@@ -45,9 +47,48 @@ class IdefReportController extends Controller
             ];
         } else {
             return [
-                'pax' => $this->buildSheetData($days, $regime, 'pax', $paxOperators, $allOperators),
-                'fret' => $this->buildSheetData($days, $regime, 'fret', $paxOperators, $allOperators),
-                'exced' => $this->buildSheetData($days, $regime, 'exced', $paxOperators, $allOperators),
+                'pax' => $this->buildSheetData($days, $regime, 'pax', $allOperators),
+                'fret' => $this->buildSheetData($days, $regime, 'fret', $allOperators),
+                'exced' => $this->buildSheetData($days, $regime, 'exced', $allOperators),
+                'operators' => [
+                    'pax' => $paxOperators->pluck('sigle')->toArray(),
+                    'fret' => $allOperators->pluck('sigle')->toArray(),
+                ]
+            ];
+        }
+    }
+
+    /**
+     * Génère le rapport annuel par regime avec datasets (un par métrique)
+     */
+    public function yearlyReport(string|int $year, string $regime): array|JsonResponse
+    {
+        $year = (int) $year;
+
+        // Vérifier s'il y a des données de vols pour ce mois
+        if (!$this->hasFlightData(null, $year, $regime)) {
+            return ApiResponse::error('Pas de données disponibles', 400);
+        }
+
+        $months = range(1, 12);
+
+        $paxOperators = $this->getOperators($regime, true);
+        $allOperators = $this->getOperators($regime);
+        if ($regime == FlightRegimeEnum::INTERNATIONAL->value) {
+            return [
+                'pax' => $this->buildAnnualSheetData($months, $year, $regime, 'pax', $allOperators),
+                'fret' => $this->buildAnnualSheetData($months, $year, $regime, 'fret', $allOperators),
+                'exced' => $this->buildAnnualSheetData($months, $year, $regime, 'exced', $allOperators),
+                'operators' => [
+                    'pax' => $paxOperators->pluck('sigle')->toArray(),
+                    'fret' => $allOperators->pluck('sigle')->toArray(),
+                ]
+            ];
+        } else {
+            return [
+                'pax' => $this->buildAnnualSheetData($months, $year, $regime, 'pax', $allOperators),
+                'fret' => $this->buildAnnualSheetData($months, $year, $regime, 'fret', $allOperators),
+                'exced' => $this->buildAnnualSheetData($months, $year, $regime, 'exced', $allOperators),
                 'operators' => [
                     'pax' => $paxOperators->pluck('sigle')->toArray(),
                     'fret' => $allOperators->pluck('sigle')->toArray(),
@@ -97,6 +138,42 @@ class IdefReportController extends Controller
         );
     }
 
+    /**
+     * Exporte le rapport annuel en Excel
+     */
+    public function yearlyExportReport(string $year = '2025')
+    {
+        // On force le format int pour éviter les erreurs de type
+        $yearInt = (int) $year;
+        $internationalData = $this->yearlyReport($yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+
+        // Vérifier si une erreur a été retournée
+        if ($internationalData instanceof \Illuminate\Http\JsonResponse) {
+            return $internationalData;
+        }
+
+        $domesticData = $this->yearlyReport($yearInt, FlightRegimeEnum::DOMESTIC->value);
+
+        // Vérifier si une erreur a été retournée
+        if ($domesticData instanceof \Illuminate\Http\JsonResponse) {
+            return $domesticData;
+        }
+
+        $fileName = sprintf(
+            'RAPPORT_ANNUEL_IDEF_%s.xlsx',
+            $year
+        );
+
+        return Excel::download(
+            new IdefAnnualReportExport(
+                $yearInt,
+                $internationalData,
+                $domesticData
+            ),
+            $fileName
+        );
+    }
+
 
     /**
      * Construit les données pour une feuille (une métrique spécifique)
@@ -105,13 +182,12 @@ class IdefReportController extends Controller
         array $days,
         string $regime,
         string $metric,
-        Collection $paxOps,
         Collection $allOps
     ): array {
-        return collect($days)->map(function ($day) use ($regime, $metric, $paxOps, $allOps) {
+        return collect($days)->map(function ($day) use ($regime, $metric, $allOps) {
             $row = ['DATE' => Carbon::parse($day)->format('d/m/Y')];
 
-            // Commercial operators
+            // All operators
             foreach ($allOps as $op) {
                 $row[$op->sigle] = $this->getMetricValue(
                     $day,
@@ -125,6 +201,45 @@ class IdefReportController extends Controller
             // AUTRES = Commerciaux non-réguliers
             $row['VNR'] = $this->getMetricValue(
                 $day,
+                $regime,
+                null,
+                FlightTypeEnum::NON_REGULAR,
+                $metric
+            );
+
+            return $row;
+        })->toArray();
+    }
+
+    /**
+     * Construit les données pour une feuille (une métrique spécifique)
+     */
+    private function buildAnnualSheetData(
+        array $months,
+        int $year,
+        string $regime,
+        string $metric,
+        Collection $allOps
+    ): array {
+        return collect($months)->map(function ($month) use ($regime, $year, $metric, $allOps) {
+            $row = ['MOIS' => Carbon::create($year, $month, 1)->format('m-Y')];
+
+            // Commercial operators
+            foreach ($allOps as $op) {
+                $row[$op->sigle] = $this->getAnnualMetricValue(
+                    $month,
+                    $year,
+                    $regime,
+                    $op->id,
+                    FlightTypeEnum::REGULAR,
+                    $metric
+                );
+            }
+
+            // AUTRES = Commerciaux non-réguliers
+            $row['VNR'] = $this->getAnnualMetricValue(
+                $month,
+                $year,
                 $regime,
                 null,
                 FlightTypeEnum::NON_REGULAR,
@@ -202,7 +317,6 @@ class IdefReportController extends Controller
                 $totals['pax']['gopass'] += (int)($stat->go_pass_count ?? 0);
                 $totals['fret'] += (int)($stat->fret_count['departure'] ?? 0);
                 $totals['exced'] += (int)($stat->excedents['departure'] ?? 0);
-
             }
 
             // Traitement des justifications
@@ -234,6 +348,111 @@ class IdefReportController extends Controller
 
         return $totals[$metric] ?? $totals;
     }
+
+    /**
+     * Récupère la valeur d'une métrique annuelle spécifique
+     */
+    private function getAnnualMetricValue(
+        string $month,
+        int $year,
+        string $regime,
+        ?int $operatorId,
+        FlightTypeEnum $type,
+        string $metric
+    ): int|float|array {
+
+        $start = Carbon::create($year, $month, 1)->startOfMonth();
+        $end = Carbon::create($year, $month, 1)->endOfMonth();
+
+        $flights = Flight::with('statistic')
+            ->where('flight_regime', $regime)
+            ->whereBetween('departure_time', [$start, $end])
+            ->where('flight_type', $type->value)
+            ->where('status', FlightStatusEnum::DEPARTED);
+
+        if ($operatorId !== null) {
+            $flights->where('operator_id', $operatorId);
+        }
+
+        $stats = $flights->get();
+
+        if ($regime === FlightRegimeEnum::INTERNATIONAL->value) {
+            $totals = [
+                'pax' => [
+                    'trafic' => 0,
+                    'gopass' => 0,
+                    'justifications' => []
+                ],
+                'fret' => [
+                    'departure' => 0,
+                    'arrival' => 0
+                ],
+                'exced' => [
+                    'departure' => 0,
+                    'arrival' => 0
+                ],
+            ];
+        } else {
+            $totals = [
+                'pax' => [
+                    'trafic' => 0,
+                    'gopass' => 0,
+                    'justifications' => []
+                ],
+                'fret' =>  0,
+                'exced' => 0
+            ];
+        }
+
+        foreach ($stats as $flight) {
+            $stat = $flight->statistic;
+            if (!$stat) continue;
+
+            // Totaux standards
+            if ($regime === FlightRegimeEnum::INTERNATIONAL->value) {
+                $totals['pax']['trafic'] += (int)($stat->passengers_count ?? 0);
+                $totals['pax']['gopass'] += (int)($stat->go_pass_count ?? 0);
+                $totals['fret']['departure']   += (int)($stat->fret_count['departure'] ?? 0);
+                $totals['fret']['arrival']  += (int)($stat->fret_count['arrival'] ?? 0);
+                $totals['exced']['departure']  += (int)($stat->excedents['departure'] ?? 0);
+                $totals['exced']['arrival'] += (int)($stat->excedents['arrival'] ?? 0);
+            } else {
+                $totals['pax']['trafic'] += (int)($stat->passengers_count ?? 0);
+                $totals['pax']['gopass'] += (int)($stat->go_pass_count ?? 0);
+                $totals['fret'] += (int)($stat->fret_count['departure'] ?? 0);
+                $totals['exced'] += (int)($stat->excedents['departure'] ?? 0);
+            }
+
+            // Traitement des justifications
+            if ($stat->has_justification && is_array($stat->justification)) {
+                foreach ($stat->justification as $key => $value) {
+
+                    if (is_array($value)) {
+                        // Cas "Militaires" ou autres tableaux imbriqués
+                        if (!isset($totals['pax']['justifications'][$key])) {
+                            $totals['pax']['justifications'][$key] = [];
+                        }
+
+                        foreach ($value as $subKey => $subValue) {
+                            if (!isset($totals['pax']['justifications'][$key][$subKey])) {
+                                $totals['pax']['justifications'][$key][$subKey] = 0;
+                            }
+                            $totals['pax']['justifications'][$key][$subKey] += (int)$subValue;
+                        }
+                    } else {
+                        // Cas "Inad", "Staff", etc. (valeurs simples)
+                        if (!isset($totals['pax']['justifications'][$key])) {
+                            $totals['pax']['justifications'][$key] = 0;
+                        }
+                        $totals['pax']['justifications'][$key] += (int)$value;
+                    }
+                }
+            }
+        }
+
+        return $totals[$metric] ?? $totals;
+    }
+
 
     /**
      * Vérifie s'il y a des données de vols pour une année ou un mois spécifique

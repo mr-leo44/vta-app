@@ -5,6 +5,7 @@ namespace App\Exports\Idef;
 use App\Exports\Idef\AnnualDomesticFreightStatSheet;
 use App\Exports\Idef\AnnualEcartStatSheet;
 use App\Exports\Idef\AnnualInternationalFreightStatSheet;
+use App\Exports\Idef\ExonerationAnnualStatSheet;
 use App\Exports\Idef\PAXAnnualStatSheet;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
@@ -52,37 +53,50 @@ class IdefAnnualReportExport implements WithMultipleSheets
             ),
             new AnnualDomesticFreightStatSheet(
                 'FRET NAT',
-                "STATISTIQUES ANNUELS FRETS EMBARQUES ET FRETS IDEF",
-                "EMBARQUES VOLS NATIONAUX $year",
+                "STATISTIQUES ANNUELS DES FRETS EMBARQUES ET FRETS IDEF",
+                "VOLS NATIONAUX $year",
                 $this->domesticData['fret'],
                 $this->domesticData['operators']['fret'],
                 "ANNEXE V"
             ),
             new AnnualDomesticFreightStatSheet(
                 'EXCED FRET NAT',
-                "STATISTIQUES ANNUELLES EXCEDANT BAGAGE FRETS EMBARQUES ET FRETS IDEF",
-                "EMBARQUES VOLS NATIONAUX $year",
+                "STATISTIQUES ANNUELLES DES EXCEDANTS BAGAGES FRETS EMBARQUES ET FRETS IDEF",
+                "VOLS NATIONAUX $year",
                 $this->domesticData['exced'],
                 $this->domesticData['operators']['fret'],
                 "ANNEXE VI"
             ),
+            new ExonerationAnnualStatSheet(
+                'FRET EXON NAT',
+                "STATISTIQUES ANNUELLES DES FRETS EXONERES PAR CATEGORIE D'EXONERATION VOLS NATIONAUX EMBARQUES $year",
+                $this->domesticData['fret'],
+                $this->domesticData['operators']['fret'],
+                "ANNEXE VII"
+            ),
             new AnnualInternationalFreightStatSheet(
                 'FRET INTER',
-                "STATISTIQUES ANNUELLES FRETS DEBARQUES/EMBARQUES ET FRETS IDEF",
-                "DEBARQUES/EMBARQUES VOLS INTERNATIONAUX $year",
+                "STATISTIQUES ANNUELLES DES FRETS DEBARQUES/EMBARQUES ET FRETS IDEF",
+                "VOLS INTERNATIONAUX $year",
                 $this->internationaldata['fret'],
                 $this->internationaldata['operators']['fret'],
                 "ANNEXE VIII"
             ),
             new AnnualInternationalFreightStatSheet(
                 'EXCED FRET INT DEP ARR',
-                "STATISTIQUES ANNUELLES EXCEDANT BAGAGE FRETS EMBARQUES ET FRETS IDEF",
-                "EMBARQUES VOLS INTERNATIONAUX $year",
+                "STATISTIQUES ANNUELLES EXCEDANTS BAGAGES FRETS DEBARQUES/EMBARQUES ET FRETS IDEF",
+                "VOLS INTERNATIONAUX $year",
                 $this->internationaldata['exced'],
                 $this->internationaldata['operators']['fret'],
                 "ANNEXE X"
             ),
-
+            new ExonerationAnnualStatSheet(
+                'FRET EXON INT',
+                "STATISTIQUES ANNUELLES DES FRETS EXONERES PAR CATEGORIE D'EXONERATION VOLS INTERNATIONAUX EMBARQUES/DEBARQUES $year",
+                $this->internationaldata['fret'],
+                $this->internationaldata['operators']['fret'],
+                "ANNEXE IX"
+            ),
         ];
     }
 }

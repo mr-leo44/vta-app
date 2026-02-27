@@ -57,6 +57,14 @@ class IdefAnnualReportExport implements WithMultipleSheets
                 $this->domesticData['operators']['fret'],
                 "ANNEXE V"
             ),
+            new AnnualDomesticFreightStatSheet(
+                'EXCED FRET NAT',
+                "STATISTIQUES ANNUELLES EXCEDANT BAGAGE FRETS EMBARQUES ET FRETS IDEF",
+                "EMBARQUES VOLS NATIONAUX $year",
+                $this->domesticData['exced'],
+                $this->domesticData['operators']['fret'],
+                "ANNEXE VI"
+            ),
         ];
     }
 }

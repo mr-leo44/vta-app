@@ -51,11 +51,11 @@ class FlightResource extends JsonResource
             // Status of the flight
             'status' => $this->status,
 
-            // Departure location of the flight
-            'departure' => $this->departure,
+            // Departure location of the flight (normalized to from/to)
+            'departure' => $this->formatLocation($this->departure),
 
-            // Arrival location of the flight
-            'arrival' => $this->arrival,
+            // Arrival location of the flight (normalized to from/to)
+            'arrival' => $this->formatLocation($this->arrival),
 
             // Departure time of the flight
             'departure_time' => $this->departure_time,
@@ -75,5 +75,26 @@ class FlightResource extends JsonResource
             // Last update date of the flight
             'updated_at' => $this->updated_at,
         ];
+    }
+
+    private function formatLocation($loc)
+    {
+        if (empty($loc)) return null;
+
+        // already new shape
+        if (isset($loc['from']) || isset($loc['to'])) {
+            $from = $loc['from'] ?? ['iata' => $loc['iata'] ?? null, 'name' => $loc['name'] ?? null];
+            $to = $loc['to'] ?? ['iata' => $loc['iata'] ?? null, 'name' => $loc['name'] ?? null];
+            return ['from' => $from, 'to' => $to];
+        }
+
+        // legacy shape: {iata,name}
+        if (is_array($loc) && (isset($loc['iata']) || isset($loc['name']))) {
+            $pair = ['iata' => $loc['iata'] ?? null, 'name' => $loc['name'] ?? null];
+            return ['from' => $pair, 'to' => $pair];
+        }
+
+        // fallback: return as-is
+        return $loc;
     }
 }

@@ -26,8 +26,14 @@ class FlightRepository implements FlightRepositoryInterface
             ->when($filters['flight_type'] ?? null, fn(Builder $q, $v) => $q->where('flight_type', $v))
             ->when($filters['flight_nature'] ?? null, fn(Builder $q, $v) => $q->where('flight_nature', $v))
             ->when($filters['status'] ?? null, fn(Builder $q, $v) => $q->where('status', $v))
-            ->when($filters['departure_iata'] ?? null, fn(Builder $q, $iata) => $q->whereJsonContains('departure->iata', $iata))
-            ->when($filters['arrival_iata'] ?? null, fn(Builder $q, $iata) => $q->whereJsonContains('arrival->iata', $iata))
+            ->when($filters['departure_iata'] ?? null, fn(Builder $q, $iata) => $q->where(function ($q2) use ($iata) {
+                $q2->whereJsonContains('departure->from->iata', $iata)
+                    ->orWhereJsonContains('departure->to->iata', $iata);
+            }))
+            ->when($filters['arrival_iata'] ?? null, fn(Builder $q, $iata) => $q->where(function ($q2) use ($iata) {
+                $q2->whereJsonContains('arrival->from->iata', $iata)
+                    ->orWhereJsonContains('arrival->to->iata', $iata);
+            }))
             ->when($filters['date_from'] ?? null, fn(Builder $q, $date) => $q->whereDate('departure_time', '>=', Carbon::parse($date)))
             ->when($filters['date_to'] ?? null, fn(Builder $q, $date) => $q->whereDate('departure_time', '<=', Carbon::parse($date)))
             ->orderBy('departure_time', 'desc')
@@ -64,8 +70,12 @@ class FlightRepository implements FlightRepositoryInterface
             $search = $filters['search'];
             $query->where(function ($q) use ($search) {
                 $q->where('flight_number', 'like', "%$search%")
-                    ->orWhereJsonContains('departure->iata', $search)
-                    ->orWhereJsonContains('arrival->iata', $search);
+                    ->orWhere(function ($q2) use ($search) {
+                        $q2->whereJsonContains('departure->from->iata', $search)
+                            ->orWhereJsonContains('departure->to->iata', $search)
+                            ->orWhereJsonContains('arrival->from->iata', $search)
+                            ->orWhereJsonContains('arrival->to->iata', $search);
+                    });
             });
         }
 

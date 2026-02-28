@@ -26,7 +26,19 @@ class FlightUpdateRequest extends FormRequest
             'operator_id' => 'sometimes|exists:operators,id',
             'aircraft_id' => 'sometimes|exists:aircrafts,id',
             'departure' => 'sometimes|array',
+            'departure.from' => 'sometimes|array',
+            'departure.from.iata' => 'sometimes|string',
+            'departure.from.name' => 'sometimes|string',
+            'departure.to' => 'sometimes|array',
+            'departure.to.iata' => 'sometimes|string',
+            'departure.to.name' => 'sometimes|string',
             'arrival' => 'sometimes|array',
+            'arrival.from' => 'sometimes|array',
+            'arrival.from.iata' => 'sometimes|string',
+            'arrival.from.name' => 'sometimes|string',
+            'arrival.to' => 'sometimes|array',
+            'arrival.to.iata' => 'sometimes|string',
+            'arrival.to.name' => 'sometimes|string',
             'departure_time' => 'sometimes|date|after:arrival_time',
             'arrival_time' => 'sometimes|date',
             'flight_type' => 'sometimes|in:regular,non_regular',
@@ -53,9 +65,17 @@ class FlightUpdateRequest extends FormRequest
 
             // Departure
             'departure.required' => 'Le lieu de depart est requis',
+            'departure.from.iata.required' => 'Le code IATA de départ (from) est requis',
+            'departure.from.name.required' => 'Le nom du lieu de départ (from) est requis',
+            'departure.to.iata.required' => 'Le code IATA de départ (to) est requis',
+            'departure.to.name.required' => 'Le nom du lieu de départ (to) est requis',
 
             // Arrival
             'arrival.required' => 'Le lieu d\'arrivée est requis',
+            'arrival.from.iata.required' => 'Le code IATA d\'arrivée (from) est requis',
+            'arrival.from.name.required' => 'Le nom du lieu d\'arrivée (from) est requis',
+            'arrival.to.iata.required' => 'Le code IATA d\'arrivée (to) est requis',
+            'arrival.to.name.required' => 'Le nom du lieu d\'arrivée (to) est requis',
 
             // Departure time
             'departure_time.required' => 'L\'heure de départ est requise.',

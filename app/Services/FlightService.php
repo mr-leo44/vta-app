@@ -36,6 +36,8 @@ class FlightService
     public function store(array $data): Flight
     {
         return DB::transaction(function () use ($data) {
+            $data['departure'] = $this->normalizeLocation($data['departure'] ?? null);
+            $data['arrival'] = $this->normalizeLocation($data['arrival'] ?? null);
             $flight = $this->flightRepo->create([
                 'flight_number' => $data['flight_number'],
                 'operator_id' => $data['operator_id'],
@@ -63,6 +65,12 @@ class FlightService
     public function update(Flight $flight, array $data): Flight
     {
         return DB::transaction(function () use ($flight, $data) {
+            if (isset($data['departure'])) {
+                $data['departure'] = $this->normalizeLocation($data['departure']);
+            }
+            if (isset($data['arrival'])) {
+                $data['arrival'] = $this->normalizeLocation($data['arrival']);
+            }
             $flight = $this->flightRepo->update($flight, $data);
 
             if (isset($data['statistics'])) {
@@ -88,4 +96,24 @@ class FlightService
     {
         return $this->flightRepo->filter($filters);
     }
+
+    private function normalizeLocation($loc): ?array
+    {
+        if (empty($loc)) return null;
+
+        // already in new shape
+        if (isset($loc['from']) || isset($loc['to'])) {
+            // ensure inner keys exist
+            $from = $loc['from'] ?? ['iata' => $loc['iata'] ?? null, 'name' => $loc['name'] ?? null];
+            $to = $loc['to'] ?? ['iata' => $loc['iata'] ?? null, 'name' => $loc['name'] ?? null];
+            return ['from' => $from, 'to' => $to];
+        }
+
+        // legacy shape: {iata:..., name:...}
+        $iata = $loc['iata'] ?? null;
+        $name = $loc['name'] ?? null;
+        $pair = ['iata' => $iata, 'name' => $name];
+        return ['from' => $pair, 'to' => $pair];
+    }
+
 }

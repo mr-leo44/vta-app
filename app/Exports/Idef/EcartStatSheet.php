@@ -68,7 +68,7 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
             $dataRow[] = $this->getDayJustifications($row); // Placeholder for justifications
             $data[] = $dataRow;
         }
-        $data[] = ['TOTAL', '', '', '', '']; // Total line
+        $data[] = ['TOTAL', '', '', '', $this->getMonthJustifications()]; // Total line
 
         // SIGNATURE
         $data[] = array_fill(0, $cols, "");
@@ -252,6 +252,56 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                             $sumOfJustifications[$key] = 0;
                         }
                         $sumOfJustifications[$key] += $justification;
+                    }
+                }
+            }
+        }
+
+        $justificationParts = [];
+
+        foreach ($sumOfJustifications as $key => $value) {
+            if ($key === "Militaires") {
+                $count = $value['value'];
+                $sfr = $value['sfr'];
+                $label = $count > 1 ? "Militaires" : "Militaire";
+                $justificationParts[] = "{$value['value']} {$label} ({$sfr} sfr)";
+            } else {
+                $justificationParts[] = "{$value} {$key}";
+            }
+        }
+
+        $justificationStrings = implode(', ', $justificationParts);
+        return $sumOfJustifications == [] ? "RAS" : $justificationStrings;
+    }
+
+    private function getMonthJustifications(): string
+    {
+        $sumOfJustifications = [];
+
+        // Parcourir tous les jours du mois
+        foreach ($this->rows as $dayRow) {
+            // Enlever la clé DATE
+            array_shift($dayRow);
+
+            // Parcourir les valeurs du jour
+            foreach ($dayRow as $value) { // Parcours des valeurs pour trouver les justifications
+                if (isset($value['justifications']) && !empty($value['justifications'])) { // Vérifie si des justifications existent
+                    foreach ($value['justifications'] as $key => $justification) {
+                        if ($key === "Militaires") {
+                            if (!isset($sumOfJustifications[$key])) {
+                                $sumOfJustifications[$key] = [
+                                    'sfr' => 0,
+                                    'value' => 0
+                                ];
+                            }
+                            $sumOfJustifications[$key]['sfr'] += $justification['sfr'];
+                            $sumOfJustifications[$key]['value'] += $justification['value'];
+                        } else {
+                            if (!isset($sumOfJustifications[$key])) {
+                                $sumOfJustifications[$key] = 0;
+                            }
+                            $sumOfJustifications[$key] += $justification;
+                        }
                     }
                 }
             }

@@ -5,9 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\IdefFret;
-use App\Models\TauxMensuel;
 use App\Services\IdefFretServiceInterface;
-use App\Services\MonthlyRateServiceInterface;
 use Illuminate\Http\Request;
 
 /**
@@ -19,7 +17,6 @@ class IdefFretController extends Controller
 {
     public function __construct(
         protected IdefFretServiceInterface $idefFretService,
-        // protected MonthlyRateServiceInterface $monthlyRateService
     ) {}
 
     /**

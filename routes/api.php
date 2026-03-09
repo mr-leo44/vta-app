@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\FlightController;
 use App\Http\Controllers\Api\AircraftController;
 use App\Http\Controllers\Api\OperatorController;
 use App\Http\Controllers\Api\IdefReportController;
+use App\Http\Controllers\Api\IdefFretController;
 use App\Http\Controllers\Api\AircraftTypeController;
 use App\Http\Controllers\Api\PaxbusReportController;
 use App\Http\Controllers\Api\TraficReportController;
@@ -113,3 +114,11 @@ Route::get('flights/filter', [FlightController::class, 'filter'])->name('flights
 Route::get('flights/all', [FlightController::class, 'all'])->name('flights.all');
 Route::get('flights/daily', [FlightController::class, 'flightsByDate'])->name('flights.daily');
 Route::apiResource('flights', FlightController::class);
+
+// IdefFret routes
+Route::prefix('idef-frets')->group(function () {
+    Route::get('/by-date/{date}', [IdefFretController::class, 'getIdefFretByDate'])->name('idefrets.byDate');
+    Route::get('/range/{from}/{to}', [IdefFretController::class, 'getIdefFretsByRange'])->name('idefrets.range');
+});
+Route::apiResource('idef-frets', IdefFretController::class)->except(['index', 'show']);
+

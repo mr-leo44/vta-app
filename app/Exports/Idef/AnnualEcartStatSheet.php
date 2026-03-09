@@ -69,7 +69,7 @@ class AnnualEcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, With
             $data[] = $dataRow;
         }
         
-        $data[] = ['TOTAL', '', '', '', '']; // Total line
+        $data[] = ['TOTAL', '', '', '', $this->getAnnualJustifications()]; // Total line
 
         // SIGNATURE
         $data[] = array_fill(0, $cols, "");
@@ -265,7 +265,65 @@ class AnnualEcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, With
                 $count = $value['value'];
                 $sfr = $value['sfr'];
                 $label = $count > 1 ? "Militaires" : "Militaire";
-                $justificationParts[] = "{$value['value']} {$label} ({$sfr} sfr)";
+                if ($sfr > 0) {
+                    $justificationParts[] = "{$value['value']} {$label} ({$sfr} sfr)";
+                } else {
+                    $justificationParts[] = "{$value['value']} {$label}";
+                }
+            } else {
+                $justificationParts[] = "{$value} {$key}";
+            }
+        }
+
+        $justificationStrings = implode(', ', $justificationParts);
+        return $sumOfJustifications == [] ? "RAS" : $justificationStrings;
+    }
+
+    private function getAnnualJustifications(): string
+    {
+        $sumOfJustifications = [];
+
+        // Parcourir tous les mois de l'année
+        foreach ($this->rows as $monthRow) {
+            // Enlever la clé MOIS
+            array_shift($monthRow);
+
+            // Parcourir les valeurs du jour
+            foreach ($monthRow as $value) { // Parcours des valeurs pour trouver les justifications
+                if (isset($value['justifications']) && !empty($value['justifications'])) { // Vérifie si des justifications existent
+                    foreach ($value['justifications'] as $key => $justification) {
+                        if ($key === "Militaires") {
+                            if (!isset($sumOfJustifications[$key])) {
+                                $sumOfJustifications[$key] = [
+                                    'sfr' => 0,
+                                    'value' => 0
+                                ];
+                            }
+                            $sumOfJustifications[$key]['sfr'] += $justification['sfr'];
+                            $sumOfJustifications[$key]['value'] += $justification['value'];
+                        } else {
+                            if (!isset($sumOfJustifications[$key])) {
+                                $sumOfJustifications[$key] = 0;
+                            }
+                            $sumOfJustifications[$key] += $justification;
+                        }
+                    }
+                }
+            }
+        }
+
+        $justificationParts = [];
+
+        foreach ($sumOfJustifications as $key => $value) {
+            if ($key === "Militaires") {
+                $count = $value['value'];
+                $sfr = $value['sfr'];
+                $label = $count > 1 ? "Militaires" : "Militaire";
+                if ($sfr > 0) {
+                    $justificationParts[] = "{$value['value']} {$label} ({$sfr} sfr)";
+                } else {
+                    $justificationParts[] = "{$value['value']} {$label}";
+                }
             } else {
                 $justificationParts[] = "{$value} {$key}";
             }

@@ -264,7 +264,11 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 $count = $value['value'];
                 $sfr = $value['sfr'];
                 $label = $count > 1 ? "Militaires" : "Militaire";
-                $justificationParts[] = "{$value['value']} {$label} ({$sfr} sfr)";
+                if ($sfr > 0) {
+                    $justificationParts[] = "{$value['value']} {$label} ({$sfr} sfr)";
+                } else {
+                    $justificationParts[] = "{$value['value']} {$label}";
+                }
             } else {
                 $justificationParts[] = "{$value} {$key}";
             }
@@ -314,7 +318,11 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 $count = $value['value'];
                 $sfr = $value['sfr'];
                 $label = $count > 1 ? "Militaires" : "Militaire";
-                $justificationParts[] = "{$value['value']} {$label} ({$sfr} sfr)";
+                if ($sfr > 0) {
+                    $justificationParts[] = "{$value['value']} {$label} ({$sfr} sfr)";
+                } else {
+                    $justificationParts[] = "{$value['value']} {$label}";
+                }
             } else {
                 $justificationParts[] = "{$value} {$key}";
             }

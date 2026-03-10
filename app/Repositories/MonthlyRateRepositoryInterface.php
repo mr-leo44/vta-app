@@ -11,5 +11,5 @@ interface MonthlyRateRepositoryInterface
     public function create(array $data): MonthlyRate;
     public function update(MonthlyRate $monthlyRate, array $data): MonthlyRate;
     public function delete(MonthlyRate $monthlyRate): bool;
-    public function findByMonth(string $month): ?MonthlyRate;
+    public function findByMonth(string $month, string $year): ?MonthlyRate;
 }

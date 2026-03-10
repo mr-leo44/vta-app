@@ -37,8 +37,8 @@ class MonthlyRateService implements MonthlyRateServiceInterface
         return $this->monthlyRateRepository->delete($monthlyRate);
     }
 
-    public function findByMonth(string $month): ?MonthlyRate
+    public function findByMonth(string $month, string $year): ?MonthlyRate
     {
-        return $this->monthlyRateRepository->findByMonth($month);
+        return $this->monthlyRateRepository->findByMonth($month, $year);
     }
 }

@@ -125,6 +125,6 @@ Route::apiResource('idef-frets', IdefFretController::class)->except(['index', 's
 
 // Monthly rate routes
 Route::prefix('monthly-rates')->group(function () {
-    Route::get('/by-month/{month}', [MonthlyRateController::class, 'getMonthlyRateByMonth'])->name('monthly-rates.byMonth');
+    Route::get('/by-month/{month}/{year}', [MonthlyRateController::class, 'getMonthlyRateByMonth'])->name('monthly-rates.byMonth');
 });
 Route::apiResource('monthly-rates', MonthlyRateController::class)->except(['show']);

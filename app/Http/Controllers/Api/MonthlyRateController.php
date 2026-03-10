@@ -70,9 +70,9 @@ class MonthlyRateController extends Controller
     /**
      * Get monthly rate entry by month.
      */
-    public function getMonthlyRateByMonth($month)
+    public function getMonthlyRateByMonth($month, $year)
     {
-        $monthlyRate = $this->monthlyRateService->findByMonth($month);
+        $monthlyRate = $this->monthlyRateService->findByMonth($month, $year);
         return $monthlyRate
             ? response()->json($monthlyRate)
             : ApiResponse::error('MonthlyRate not found', 404);

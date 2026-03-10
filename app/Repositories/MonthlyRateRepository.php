@@ -4,7 +4,6 @@ namespace App\Repositories;
 
 use App\Models\MonthlyRate;
 use App\Repositories\MonthlyRateRepositoryInterface;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class MonthlyRateRepository implements MonthlyRateRepositoryInterface
@@ -30,8 +29,8 @@ class MonthlyRateRepository implements MonthlyRateRepositoryInterface
         return $monthlyRate->delete();
     }
 
-    public function findByMonth(string $month): ?MonthlyRate
+    public function findByMonth(string $month, string $year): ?MonthlyRate
     {
-        return MonthlyRate::where('month', $month)->first();
+        return MonthlyRate::where('month', "$year-0$month")->first();
     }
 }

@@ -11,6 +11,8 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\Flight;
 use App\Models\Operator;
+use App\Services\IdefFretServiceInterface;
+use App\Services\MonthlyRateServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
@@ -18,6 +20,10 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class IdefReportController extends Controller
 {
+    public function __construct(
+        protected IdefFretServiceInterface $idefFretService,
+        protected MonthlyRateServiceInterface $monthlyRateService
+    ) {}
     /**
      * Génère le rapport mensuel par regime avec datasets (un par métrique)
      */
@@ -50,6 +56,8 @@ class IdefReportController extends Controller
                 'pax' => $this->buildSheetData($days, $regime, 'pax', $allOperators),
                 'fret' => $this->buildSheetData($days, $regime, 'fret', $allOperators),
                 'exced' => $this->buildSheetData($days, $regime, 'exced', $allOperators),
+                'idef_fret' => $this->getMonthlyIdefFretData($month, $year),
+                'monthly_rate' => $this->monthlyRateService->findByMonth($month, $year)->rate,
                 'operators' => [
                     'pax' => $paxOperators->pluck('sigle')->toArray(),
                     'fret' => $allOperators->pluck('sigle')->toArray(),
@@ -535,5 +543,36 @@ class IdefReportController extends Controller
         ];
 
         return $monthNames[$month] ?? 'INCONNU';
+    }
+
+    /**
+     * Get monthly IdeFret data aggregated by day
+     */
+    public function getMonthlyIdefFretData(int $month, int $year)
+    {
+        $month = (int) $month;
+        $year = (int) $year;
+
+        $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+
+        $ideFrets = $this->idefFretService->getByDateRange(
+            $startDate->format('Y-m-d'),
+            $endDate->format('Y-m-d')
+        );
+
+        if ($ideFrets->isEmpty()) {
+            return ApiResponse::error('No IdeFret data available for this month', 404);
+        }
+
+        $data = $ideFrets->map(function ($ideFret) {
+            return [
+                'DATE' => Carbon::parse($ideFret->date)->format('d/m/Y'),
+                'usd' => $ideFret->usd,
+                'cdf' => $ideFret->cdf,
+            ];
+        });
+
+        return $data->toArray();
     }
 }

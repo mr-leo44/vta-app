@@ -97,6 +97,7 @@ class IdefReportController extends Controller
                 'pax' => $this->buildAnnualSheetData($months, $year, $regime, 'pax', $allOperators),
                 'fret' => $this->buildAnnualSheetData($months, $year, $regime, 'fret', $allOperators),
                 'exced' => $this->buildAnnualSheetData($months, $year, $regime, 'exced', $allOperators),
+                'idef_fret' => $this->getAnnualIdefFretData($months, $year),
                 'operators' => [
                     'pax' => $paxOperators->pluck('sigle')->toArray(),
                     'fret' => $allOperators->pluck('sigle')->toArray(),
@@ -562,7 +563,7 @@ class IdefReportController extends Controller
         );
 
         if ($ideFrets->isEmpty()) {
-            return ApiResponse::error('No IdeFret data available for this month', 404);
+            return [];
         }
 
         $data = $ideFrets->map(function ($ideFret) {
@@ -574,5 +575,28 @@ class IdefReportController extends Controller
         });
 
         return $data->toArray();
+    }
+
+    /**
+     * Get annual IdeFret data aggregated by month
+     */
+    public function getAnnualIdefFretData(array $months, int $year)
+    {
+        $year = (int) $year;
+
+        return collect($months)->map(function ($month) use ($year) {
+            $row = ['MOIS' => Carbon::create($year, $month, 1)->format('m-Y')];
+
+            if (empty($this->getMonthlyIdefFretData($month, $year))) {
+                $row = array_merge($row, ['usd' => 0, 'cdf' => 0]);
+            } else {
+                $monthlyData = collect($this->getMonthlyIdefFretData($month, $year));
+                $row = array_merge($row, [
+                    'usd' => $monthlyData->sum('usd'),
+                    'cdf' => $monthlyData->sum('cdf'),
+                ]);
+            }
+            return $row;
+        })->toArray();    
     }
 }

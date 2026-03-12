@@ -562,15 +562,18 @@ class IdefReportController extends Controller
             $endDate->format('Y-m-d')
         );
 
-        if ($ideFrets->isEmpty()) {
-            return [];
-        }
+        // Key the ideFrets by date for easy lookup
+        $ideFretsKeyed = $ideFrets->keyBy(function ($ideFret) {
+            return Carbon::parse($ideFret->date)->format('Y-m-d');
+        });
+        $days = $this->getDaysOfMonth($month, $year);
 
-        $data = $ideFrets->map(function ($ideFret) {
+        $data = collect($days)->map(function ($day) use ($ideFretsKeyed) {
+            $ideFret = $ideFretsKeyed->get($day);
             return [
-                'DATE' => Carbon::parse($ideFret->date)->format('d/m/Y'),
-                'usd' => $ideFret->usd,
-                'cdf' => $ideFret->cdf,
+                'DATE' => Carbon::parse($day)->format('d/m/Y'),
+                'usd' => $ideFret ? ($ideFret->usd ?? 0) : 0,
+                'cdf' => $ideFret ? ($ideFret->cdf ?? 0) : 0,
             ];
         });
 
@@ -587,15 +590,12 @@ class IdefReportController extends Controller
         return collect($months)->map(function ($month) use ($year) {
             $row = ['MOIS' => Carbon::create($year, $month, 1)->format('m-Y')];
 
-            if (empty($this->getMonthlyIdefFretData($month, $year))) {
-                $row = array_merge($row, ['usd' => 0, 'cdf' => 0]);
-            } else {
-                $monthlyData = collect($this->getMonthlyIdefFretData($month, $year));
-                $row = array_merge($row, [
-                    'usd' => $monthlyData->sum('usd'),
-                    'cdf' => $monthlyData->sum('cdf'),
-                ]);
-            }
+            $monthlyData = collect($this->getMonthlyIdefFretData($month, $year));
+            $row = array_merge($row, [
+                'usd' => $monthlyData->sum('usd'),
+                'cdf' => $monthlyData->sum('cdf'),
+            ]);
+
             return $row;
         })->toArray();    
     }

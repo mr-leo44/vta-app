@@ -72,12 +72,15 @@ class AnnualIdefFretStatSheet implements WithTitle, ShouldAutoSize, FromArray, W
 
         // SIGNATURE
         $sig1 = array_fill(0, $cols, '');
+        $sig1[0] = 'CB RECETTE:  KIBANZA';
         $sig1[$cols - 3] = 'LE CHEF DE BUREAU IDEF';
         $data[] = $sig1;
 
         $sig2 = array_fill(0, $cols, '');
+        $sig2[0] = 'CB BANQUE : LOMPOKO';
         $sig2[$cols - 3] = 'BANZE LUKUNGAY';
         $data[] = $sig2;
+
 
         return $data;
     }
@@ -215,14 +218,17 @@ class AnnualIdefFretStatSheet implements WithTitle, ShouldAutoSize, FromArray, W
                 $signatureStartColIndex = $highestColIndex - 2;
                 $signatureStartCol = Coordinate::stringFromColumnIndex($signatureStartColIndex);
                 $signatureEndCol = Coordinate::stringFromColumnIndex($highestColIndex);
-                // Ligne 1 : LE CHEF DE BUREAU IDEF
+                
+                // Ligne 1
+                $s->mergeCells("A{$signatureRow1}:B{$signatureRow1}");
                 $s->mergeCells("{$signatureStartCol}{$signatureRow1}:{$signatureEndCol}{$signatureRow1}");
                 $s->getStyle("{$signatureStartCol}{$signatureRow1}")
                     ->getFont()->setBold(true)->setSize(11);
                 $s->getStyle("{$signatureStartCol}{$signatureRow1}")
                     ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 
-                // Ligne 2 : BANZE LUKUNGAY
+                // Ligne 2 
+                $s->mergeCells("A{$signatureRow2}:B{$signatureRow2}");
                 $s->mergeCells("{$signatureStartCol}{$signatureRow2}:{$signatureEndCol}{$signatureRow2}");
                 $s->getStyle("{$signatureStartCol}{$signatureRow2}")
                     ->getFont()->setBold(true)->setSize(12);

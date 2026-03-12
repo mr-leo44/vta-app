@@ -72,10 +72,12 @@ class IdefFretStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEve
 
         // SIGNATURE
         $sig1 = array_fill(0, $cols, '');
+        $sig1[0] = 'CB RECETTE:  KIBANZA';
         $sig1[$cols - 3] = 'LE CHEF DE BUREAU IDEF';
         $data[] = $sig1;
 
         $sig2 = array_fill(0, $cols, '');
+        $sig2[0] = 'CB BANQUE : LOMPOKO';
         $sig2[$cols - 3] = 'BANZE LUKUNGAY';
         $data[] = $sig2;
 
@@ -209,20 +211,22 @@ class IdefFretStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEve
                 // ✅ 2 & 3. SIGNATURE : 2 colonnes depuis la droite, fusionnées et centrées
                 $signatureRow1 = $highestRow - 1;
                 $signatureRow2 = $signatureRow1 + 1;
-                // dd($signatureRow1, $signatureRow2, $highestColIndex);
 
                 // ✅ 2 colonnes à partir de la droite
                 $signatureStartColIndex = $highestColIndex - 2;
                 $signatureStartCol = Coordinate::stringFromColumnIndex($signatureStartColIndex);
                 $signatureEndCol = Coordinate::stringFromColumnIndex($highestColIndex);
-                // Ligne 1 : LE CHEF DE BUREAU IDEF
+                
+                // Ligne 1
+                $s->mergeCells("A{$signatureRow1}:B{$signatureRow1}");
                 $s->mergeCells("{$signatureStartCol}{$signatureRow1}:{$signatureEndCol}{$signatureRow1}");
                 $s->getStyle("{$signatureStartCol}{$signatureRow1}")
                     ->getFont()->setBold(true)->setSize(11);
                 $s->getStyle("{$signatureStartCol}{$signatureRow1}")
                     ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 
-                // Ligne 2 : BANZE LUKUNGAY
+                // Ligne 2 
+                $s->mergeCells("A{$signatureRow2}:B{$signatureRow2}");
                 $s->mergeCells("{$signatureStartCol}{$signatureRow2}:{$signatureEndCol}{$signatureRow2}");
                 $s->getStyle("{$signatureStartCol}{$signatureRow2}")
                     ->getFont()->setBold(true)->setSize(12);

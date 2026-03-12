@@ -1,16 +1,18 @@
 <?php
 
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\AircraftController;
+use App\Http\Controllers\Api\AircraftTypeController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\FlightController;
-use App\Http\Controllers\Api\AircraftController;
-use App\Http\Controllers\Api\OperatorController;
+use App\Http\Controllers\Api\FlightJustificationController;
+use App\Http\Controllers\Api\IdefFretController;
 use App\Http\Controllers\Api\IdefReportController;
-use App\Http\Controllers\Api\AircraftTypeController;
+use App\Http\Controllers\Api\MonthlyRateController;
+use App\Http\Controllers\Api\OperatorController;
 use App\Http\Controllers\Api\PaxbusReportController;
 use App\Http\Controllers\Api\TraficReportController;
-use App\Http\Controllers\Api\FlightJustificationController;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Route;
 
 // Authentication routes
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
@@ -113,3 +115,16 @@ Route::get('flights/filter', [FlightController::class, 'filter'])->name('flights
 Route::get('flights/all', [FlightController::class, 'all'])->name('flights.all');
 Route::get('flights/daily', [FlightController::class, 'flightsByDate'])->name('flights.daily');
 Route::apiResource('flights', FlightController::class);
+
+// IdefFret routes
+Route::prefix('idef-frets')->group(function () {
+    Route::get('/by-date/{date}', [IdefFretController::class, 'getIdefFretByDate'])->name('idefrets.byDate');
+    Route::get('/range/{from}/{to}', [IdefFretController::class, 'getIdefFretsByRange'])->name('idefrets.range');
+});
+Route::apiResource('idef-frets', IdefFretController::class)->except(['index', 'show']);
+
+// Monthly rate routes
+Route::prefix('monthly-rates')->group(function () {
+    Route::get('/by-month/{month}/{year}', [MonthlyRateController::class, 'getMonthlyRateByMonth'])->name('monthly-rates.byMonth');
+});
+Route::apiResource('monthly-rates', MonthlyRateController::class)->except(['show']);

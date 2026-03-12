@@ -109,6 +109,12 @@ class IdefReportExport implements WithMultipleSheets
                 $this->internationaldata,
                 "ANNEXE XI"
             ),
+            new IdefFretStatSheet(
+                'IDEF FRET PAYE NAT',
+                "IDEF FRET NATIONAL PAYES $selectedMonth $year",
+                $this->domesticData,
+                "ANNEXE XII"
+            ),
         ];
     }
 

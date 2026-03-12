@@ -13,27 +13,30 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
-class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
+class IdefFretStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
 {
     protected $sheetTitle;
     protected $title;
     protected $rows;
+    protected $annexeNumber;
 
-    public function __construct(string $sheetTitle, string $title, array $rows)
+
+    public function __construct(string $sheetTitle, string $title, array $rows, string $annexeNumber)
     {
         $this->sheetTitle = $sheetTitle;
         $this->title = $title;
         $this->rows = $rows;
+        $this->annexeNumber = $annexeNumber;
     }
 
     public function title(): string
     {
-        return substr($this->sheetTitle, 0, 31); //$this->sheetTitle;
+        return substr($this->sheetTitle, 0, 50);
     }
 
     public function array(): array
     {
-        $cols = 5; // DATE + PAX + GOPASS + ECART + JUSTIFICATIFS
+        $cols = 7; // DATE + POIDS 1 + USD + CDF + VALEUR EN $ + POIDS 2 + TOTAL
         $data = [];
 
         // TITRES
@@ -43,43 +46,41 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 ['BUREAU IDEF'],
                 ["RVA AERO/N'DJILI"],
                 ["DIVISION COMMERCIALE"],
-                ['', 'SYNTHESE'],
+                ['', $this->annexeNumber],
                 [$this->title],
             ] as $line
         ) {
             $data[] = array_pad($line, $cols, '');
         }
-        // EN-TÊTES
-        $data[] = ['DATE', 'NOMBRE PAX EMBARQUES', 'NOMBRE DES GO-PASS RAMASSES', 'ECART', 'JUSTIFICATIONS'];
 
-        // ✅ DONNÉES : On ne met QUE les dates, le reste sera écrit dans AfterSheet
-        foreach ($this->rows as $row) {
-            $dataRow = [$row['DATE'] ?? ''];
-            $totalPax = 0;
-            $totalGopass = 0;
-            array_shift($row); // Remove the first row which contains the date
-            foreach ($row as $key => $value) {
-                $totalPax += $value['trafic'];
-                $totalGopass += $value['gopass'];
-            }
-            $dataRow[] = $totalPax;
-            $dataRow[] = $totalGopass;
-            $dataRow[] = $totalPax - $totalGopass;
-            $dataRow[] = $this->getDayJustifications($row); // Placeholder for justifications
-            $data[] = $dataRow;
+        // EN-TÊTES
+        $data[] = ['DATE', 'POIDS 1/0,009', 'USD', 'MONTANT EN CAISSE', '', '', 'TOTAL POIDS'];
+        $data[] = ['', '', '', 'CDF', '', '', ''];
+        $data[] = ['', '', '', 'CDF', "VALEUR EN $ tx/{$this->rows['monthly_rate']}", 'POIDS 2/0,009', ''];
+
+        foreach ($this->rows['idef_fret'] as $row) {
+            $cdfRateProportion = (int)ceil($row['cdf'] / $this->rows['monthly_rate']);
+            $usdFreight = (int)ceil($row['usd'] / 0.009);
+            $cdfFreight = (int)($cdfRateProportion / 0.009);
+            $data[] = ["DATE" => $row['DATE'], $usdFreight, $row['usd'], $row['cdf'], $cdfRateProportion, $cdfFreight, $usdFreight + $cdfFreight];
         }
-        $data[] = ['TOTAL', '', '', '', $this->getMonthJustifications()]; // Total line
+
+        $data[] = ['TOTAL', '', '', '', '']; // Total line
+
+        // LIGNES VIDES AVANT SIGNATURE
+        $data[] = array_fill(0, $cols, '');
 
         // SIGNATURE
-        $data[] = array_fill(0, $cols, "");
-
         $sig1 = array_fill(0, $cols, '');
-        $sig1[$cols - 1] = 'LE CHEF DE BUREAU IDEF';
+        $sig1[0] = 'CB RECETTE:  KIBANZA';
+        $sig1[$cols - 3] = 'LE CHEF DE BUREAU IDEF';
         $data[] = $sig1;
 
         $sig2 = array_fill(0, $cols, '');
-        $sig2[$cols - 1] = 'BANZE LUKUNGAY';
+        $sig2[0] = 'CB BANQUE : LOMPOKO';
+        $sig2[$cols - 3] = 'BANZE LUKUNGAY';
         $data[] = $sig2;
+
         return $data;
     }
 
@@ -88,8 +89,6 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $s = $event->sheet->getDelegate();
-
-                // ORIENTATION + FIT TO PAGE
                 $s->getPageSetup()
                     ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
                     ->setFitToPage(true)
@@ -108,7 +107,9 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 $lastDataRow = $highestRow - 3; // La ligne avant les 2 lignes de signature + la ligne TOTAL
                 $highestCol = $s->getHighestColumn();
                 $highestColIndex = Coordinate::columnIndexFromString($highestCol);
-
+                // LIGNES DE DONNÉES
+                $headerRow = 7; // La ligne où commencent les données (après les titres)          
+                $firstDataRow = $headerRow + 3; // La ligne où commencent les données (après les titres et la ligne vide)
 
                 // Lignes 1-4 : Alignées à gauche
                 for ($row = 1; $row <= 4; $row++) {
@@ -120,9 +121,6 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 }
 
                 $s->getStyle("B5")->getFont()->setBold(false)->setSize(14);
-                $s->getStyle("B5")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                    ->setVertical(Alignment::VERTICAL_CENTER);
                 // Ligne 5 : TITRE PRINCIPAL (CENTRÉ)
                 $s->mergeCells("A6:{$highestCol}6");
                 $s->getStyle("A6")->getFont()->setBold(true)->setSize(16);
@@ -133,22 +131,25 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                     ->getFill()->setFillType('solid')
                     ->getStartColor()->setARGB('FFD9E1F2');
 
-                // LIGNES DE DONNÉES
-                $headerRow = 7; // La ligne où commencent les en-têtes de colonnes (LIBELLE, PAX/FRET TOTAL, etc.)
-                $firstDataRow = $headerRow + 1;
-
                 // STYLE EN-TÊTES
                 $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
                     ->getFont()->setBold(true)->setSize(13);
-                $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
+                $s->getStyle("A{$headerRow}:{$highestCol}" . ($headerRow + 2))
                     ->getFill()->setFillType('solid')
                     ->getStartColor()->setARGB('FF4472C4');
-                $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
+                $s->getStyle("A{$headerRow}:{$highestCol}" . ($headerRow + 2))
                     ->getFont()->getColor()->setARGB('FFFFFFFF');
-                $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
+                $s->getStyle("A{$headerRow}:{$highestCol}" . ($headerRow + 2))
                     ->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                     ->setVertical(Alignment::VERTICAL_CENTER);
+
+                $s->mergeCells("A{$headerRow}:A" . ($headerRow + 2)); // Fusionner la colonne A sur les 3 lignes d'en-têtes
+                $s->mergeCells("B{$headerRow}:B" . ($headerRow + 2)); // Fusionner la colonne B sur les 3 lignes d'en-têtes
+                $s->mergeCells("C{$headerRow}:C" . ($headerRow + 2)); // Fusionner la colonne C sur les 3 lignes d'en-têtes
+                $s->mergeCells("G{$headerRow}:G" . ($headerRow + 2)); // Fusionner la colonne G sur les 3 lignes d'en-têtes
+                $s->mergeCells("D{$headerRow}:F{$headerRow}"); // Fusionner les colonnes D à F sur la ligne d'en-tête 1
+                $s->mergeCells("D" . ($headerRow + 1) . ":F" . ($headerRow + 1)); // Fusionner les colonnes D à F sur la ligne d'en-tête 1
 
                 // BORDURES
                 $s->getStyle("A{$headerRow}:{$highestCol}{$lastDataRow}")
@@ -159,20 +160,16 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                     ->getFont()->setSize(14);
 
                 // STYLE DES LIGNES DE DONNÉES
-                for ($row = $headerRow + 1; $row <= $lastDataRow; $row++) {
-                    $s->getStyle("A{$row}:D{$row}")
+                for ($row = $firstDataRow; $row <= $lastDataRow; $row++) {
+                    $s->getStyle("A{$row}:{$highestCol}{$row}")
                         ->getAlignment()
                         ->setHorizontal(Alignment::HORIZONTAL_RIGHT)
                         ->setVertical(Alignment::VERTICAL_CENTER);
-                    $s->getStyle("A{$row}:D{$row}")
+                    $s->getStyle("A{$row}:{$highestCol}{$row}")
                         ->getFont()
                         ->setSize(14);
-                    $s->getStyle("E{$row}")
-                        ->getFont()->setSize(14);
-                    $s->getStyle("E{$row}")
-                        ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
 
-                    for ($colIndex = 2; $colIndex <= $highestColIndex - 1; $colIndex++) {
+                    for ($colIndex = 2; $colIndex <= $highestColIndex; $colIndex++) {
                         $colLetter = Coordinate::stringFromColumnIndex($colIndex);
                         $s->setCellValueExplicit("{$colLetter}{$row}", $s->getCell("{$colLetter}{$row}")->getValue(), DataType::TYPE_NUMERIC);
                     }
@@ -183,9 +180,9 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 // ═══════════════════════════════════════════════════════════
 
                 // Ligne TOTAUX : somme verticale pour chaque colonne
-                for ($col = 2; $col <= $highestColIndex - 1; $col++) {
+                for ($col = 2; $col <= $highestColIndex; $col++) {
                     $colLetter = Coordinate::stringFromColumnIndex($col);
-                    $latestDataRow = $lastDataRow - 1;
+                    $latestDataRow = $lastDataRow - 1; // La ligne avant la ligne TOTAL
                     $s->setCellValue(
                         "{$colLetter}{$lastDataRow}",
                         "=SUM({$colLetter}{$firstDataRow}:{$colLetter}{$latestDataRow})"
@@ -203,6 +200,7 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 $s->getStyle("A{$lastDataRow}:{$highestCol}{$lastDataRow}")
                     ->getBorders()->getBottom()
                     ->setBorderStyle(Border::BORDER_THIN);
+
                 // Hauteur des lignes
                 $s->getRowDimension($headerRow)->setRowHeight(25);
 
@@ -215,120 +213,26 @@ class EcartStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
                 $signatureRow2 = $signatureRow1 + 1;
 
                 // ✅ 2 colonnes à partir de la droite
+                $signatureStartColIndex = $highestColIndex - 2;
+                $signatureStartCol = Coordinate::stringFromColumnIndex($signatureStartColIndex);
                 $signatureEndCol = Coordinate::stringFromColumnIndex($highestColIndex);
-
-                // Ligne 1 : LE CHEF DE BUREAU IDEF
-                $s->getStyle("{$signatureEndCol}{$signatureRow1}")
+                
+                // Ligne 1
+                $s->mergeCells("A{$signatureRow1}:B{$signatureRow1}");
+                $s->mergeCells("{$signatureStartCol}{$signatureRow1}:{$signatureEndCol}{$signatureRow1}");
+                $s->getStyle("{$signatureStartCol}{$signatureRow1}")
                     ->getFont()->setBold(true)->setSize(11);
-                $s->getStyle("{$signatureEndCol}{$signatureRow1}")
+                $s->getStyle("{$signatureStartCol}{$signatureRow1}")
                     ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 
-                // Ligne 2 : BANZE LUKUNGAY
-                $s->getStyle("{$signatureEndCol}{$signatureRow2}")
+                // Ligne 2 
+                $s->mergeCells("A{$signatureRow2}:B{$signatureRow2}");
+                $s->mergeCells("{$signatureStartCol}{$signatureRow2}:{$signatureEndCol}{$signatureRow2}");
+                $s->getStyle("{$signatureStartCol}{$signatureRow2}")
                     ->getFont()->setBold(true)->setSize(12);
-                $s->getStyle("{$signatureEndCol}{$signatureRow2}")
+                $s->getStyle("{$signatureStartCol}{$signatureRow2}")
                     ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
             }
         ];
-    }
-
-    private function getDayJustifications($row): string
-    {
-        $sumOfJustifications = [];
-        foreach ($row as $value) { // Parcours des valeurs de la ligne pour trouver les justifications
-            if (isset($value['justifications']) && !empty($value['justifications'])) { // Vérifie si des justifications existent
-                foreach ($value['justifications'] as $key => $justification) {
-                    if ($key === "Militaires") {
-                        if (!isset($sumOfJustifications[$key])) {
-                            $sumOfJustifications[$key] = [
-                                'sfr' => 0,
-                                'value' => 0
-                            ];
-                        }
-                        $sumOfJustifications[$key]['sfr'] += $justification['sfr'];
-                        $sumOfJustifications[$key]['value'] += $justification['value'];
-                    } else {
-                        if (!isset($sumOfJustifications[$key])) {
-                            $sumOfJustifications[$key] = 0;
-                        }
-                        $sumOfJustifications[$key] += $justification;
-                    }
-                }
-            }
-        }
-
-        $justificationParts = [];
-
-        foreach ($sumOfJustifications as $key => $value) {
-            if ($key === "Militaires") {
-                $count = $value['value'];
-                $sfr = $value['sfr'];
-                $label = $count > 1 ? "Militaires" : "Militaire";
-                if ($sfr > 0) {
-                    $justificationParts[] = "{$value['value']} {$label} ({$sfr} sfr)";
-                } else {
-                    $justificationParts[] = "{$value['value']} {$label}";
-                }
-            } else {
-                $justificationParts[] = "{$value} {$key}";
-            }
-        }
-
-        $justificationStrings = implode(', ', $justificationParts);
-        return $sumOfJustifications == [] ? "RAS" : $justificationStrings;
-    }
-
-    private function getMonthJustifications(): string
-    {
-        $sumOfJustifications = [];
-
-        // Parcourir tous les jours du mois
-        foreach ($this->rows as $dayRow) {
-            // Enlever la clé DATE
-            array_shift($dayRow);
-
-            // Parcourir les valeurs du jour
-            foreach ($dayRow as $value) { // Parcours des valeurs pour trouver les justifications
-                if (isset($value['justifications']) && !empty($value['justifications'])) { // Vérifie si des justifications existent
-                    foreach ($value['justifications'] as $key => $justification) {
-                        if ($key === "Militaires") {
-                            if (!isset($sumOfJustifications[$key])) {
-                                $sumOfJustifications[$key] = [
-                                    'sfr' => 0,
-                                    'value' => 0
-                                ];
-                            }
-                            $sumOfJustifications[$key]['sfr'] += $justification['sfr'];
-                            $sumOfJustifications[$key]['value'] += $justification['value'];
-                        } else {
-                            if (!isset($sumOfJustifications[$key])) {
-                                $sumOfJustifications[$key] = 0;
-                            }
-                            $sumOfJustifications[$key] += $justification;
-                        }
-                    }
-                }
-            }
-        }
-
-        $justificationParts = [];
-
-        foreach ($sumOfJustifications as $key => $value) {
-            if ($key === "Militaires") {
-                $count = $value['value'];
-                $sfr = $value['sfr'];
-                $label = $count > 1 ? "Militaires" : "Militaire";
-                if ($sfr > 0) {
-                    $justificationParts[] = "{$value['value']} {$label} ({$sfr} sfr)";
-                } else {
-                    $justificationParts[] = "{$value['value']} {$label}";
-                }
-            } else {
-                $justificationParts[] = "{$value} {$key}";
-            }
-        }
-
-        $justificationStrings = implode(', ', $justificationParts);
-        return $sumOfJustifications == [] ? "RAS" : $justificationStrings;
     }
 }

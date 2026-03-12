@@ -11,6 +11,8 @@ use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Models\Flight;
 use App\Models\Operator;
+use App\Services\IdefFretServiceInterface;
+use App\Services\MonthlyRateServiceInterface;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
@@ -18,6 +20,10 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class IdefReportController extends Controller
 {
+    public function __construct(
+        protected IdefFretServiceInterface $idefFretService,
+        protected MonthlyRateServiceInterface $monthlyRateService
+    ) {}
     /**
      * Génère le rapport mensuel par regime avec datasets (un par métrique)
      */
@@ -50,6 +56,8 @@ class IdefReportController extends Controller
                 'pax' => $this->buildSheetData($days, $regime, 'pax', $allOperators),
                 'fret' => $this->buildSheetData($days, $regime, 'fret', $allOperators),
                 'exced' => $this->buildSheetData($days, $regime, 'exced', $allOperators),
+                'idef_fret' => $this->getMonthlyIdefFretData($month, $year),
+                'monthly_rate' => $this->monthlyRateService->findByMonth($month, $year)->rate,
                 'operators' => [
                     'pax' => $paxOperators->pluck('sigle')->toArray(),
                     'fret' => $allOperators->pluck('sigle')->toArray(),
@@ -89,6 +97,7 @@ class IdefReportController extends Controller
                 'pax' => $this->buildAnnualSheetData($months, $year, $regime, 'pax', $allOperators),
                 'fret' => $this->buildAnnualSheetData($months, $year, $regime, 'fret', $allOperators),
                 'exced' => $this->buildAnnualSheetData($months, $year, $regime, 'exced', $allOperators),
+                'idef_fret' => $this->getAnnualIdefFretData($months, $year),
                 'operators' => [
                     'pax' => $paxOperators->pluck('sigle')->toArray(),
                     'fret' => $allOperators->pluck('sigle')->toArray(),
@@ -535,5 +544,60 @@ class IdefReportController extends Controller
         ];
 
         return $monthNames[$month] ?? 'INCONNU';
+    }
+
+    /**
+     * Get monthly IdeFret data aggregated by day
+     */
+    public function getMonthlyIdefFretData(int $month, int $year)
+    {
+        $month = (int) $month;
+        $year = (int) $year;
+
+        $startDate = Carbon::create($year, $month, 1)->startOfMonth();
+        $endDate = Carbon::create($year, $month, 1)->endOfMonth();
+
+        $ideFrets = $this->idefFretService->getByDateRange(
+            $startDate->format('Y-m-d'),
+            $endDate->format('Y-m-d')
+        );
+
+        // Key the ideFrets by date for easy lookup
+        $ideFretsKeyed = $ideFrets->keyBy(function ($ideFret) {
+            return Carbon::parse($ideFret->date)->format('Y-m-d');
+        });
+        $days = $this->getDaysOfMonth($month, $year);
+
+        $data = collect($days)->map(function ($day) use ($ideFretsKeyed) {
+            $ideFret = $ideFretsKeyed->get($day);
+            return [
+                'DATE' => Carbon::parse($day)->format('d/m/Y'),
+                'usd' => $ideFret ? ($ideFret->usd ?? 0) : 0,
+                'cdf' => $ideFret ? ($ideFret->cdf ?? 0) : 0,
+            ];
+        });
+
+        return $data->toArray();
+    }
+
+    /**
+     * Get annual IdeFret data aggregated by month
+     */
+    public function getAnnualIdefFretData(array $months, int $year)
+    {
+        $year = (int) $year;
+
+        return collect($months)->map(function ($month) use ($year) {
+            $row = ['MOIS' => Carbon::create($year, $month, 1)->format('m-Y')];
+
+            $monthlyData = collect($this->getMonthlyIdefFretData($month, $year));
+            $row = array_merge($row, [
+                'usd' => $monthlyData->sum('usd'),
+                'cdf' => $monthlyData->sum('cdf'),
+                'rate' => $this->monthlyRateService->findByMonth($month, $year)->rate ?? 2000,
+            ]);
+
+            return $row;
+        })->toArray();    
     }
 }

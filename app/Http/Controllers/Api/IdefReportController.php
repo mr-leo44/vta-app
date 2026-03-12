@@ -594,6 +594,7 @@ class IdefReportController extends Controller
             $row = array_merge($row, [
                 'usd' => $monthlyData->sum('usd'),
                 'cdf' => $monthlyData->sum('cdf'),
+                'rate' => $this->monthlyRateService->findByMonth($month, $year)->rate ?? 2000,
             ]);
 
             return $row;

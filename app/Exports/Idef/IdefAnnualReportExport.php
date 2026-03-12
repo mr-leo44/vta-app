@@ -4,9 +4,11 @@ namespace App\Exports\Idef;
 
 use App\Exports\Idef\AnnualDomesticFreightStatSheet;
 use App\Exports\Idef\AnnualEcartStatSheet;
+use App\Exports\Idef\AnnualIdefFretStatSheet;
 use App\Exports\Idef\AnnualInternationalFreightStatSheet;
 use App\Exports\Idef\ExonerationAnnualStatSheet;
 use App\Exports\Idef\PAXAnnualStatSheet;
+use App\Exports\Idef\SynthStatSheet;
 use Maatwebsite\Excel\Concerns\WithMultipleSheets;
 
 class IdefAnnualReportExport implements WithMultipleSheets
@@ -103,6 +105,12 @@ class IdefAnnualReportExport implements WithMultipleSheets
                 $this->domesticData,
                 $this->internationaldata,
                 "ANNEXE XI"
+            ),
+            new AnnualIdefFretStatSheet(
+                'IDEF PAYE',
+                "IDEF FRET NATIONAL PAYES $year",
+                $this->domesticData,
+                "ANNEXE XII"
             )
         ];
     }

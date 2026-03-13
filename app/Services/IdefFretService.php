@@ -39,4 +39,16 @@ class IdefFretService implements IdefFretServiceInterface
     {
         return $this->ideFretRepository->getByDateRange($from, $to);
     }
+
+    /**
+     * Upsert a batch of idef fret entries.
+     * Each entry is created if the date doesn't exist, updated otherwise.
+     *
+     * @param  array  $entries  Array of ['date', 'usd', 'cdf']
+     * @return array  ['created' => IdefFret[], 'updated' => IdefFret[]]
+     */
+    public function upsertBatch(array $entries): array
+    {
+        return $this->ideFretRepository->upsertBatch($entries);
+    }
 }

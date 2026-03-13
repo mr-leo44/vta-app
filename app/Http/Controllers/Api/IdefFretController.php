@@ -35,6 +35,34 @@ class IdefFretController extends Controller
     }
 
     /**
+     * Store or update multiple idef fret entries in batch.
+     *
+     * Accepts an array of entries. Each entry with a date that already exists
+     * will be updated; entries with new dates will be created.
+     *
+     * Body example:
+     * {
+     *   "entries": [
+     *     { "date": "2026-02-01", "usd": 120, "cdf": 0 },
+     *     { "date": "2026-02-02", "usd": 95,  "cdf": 500 }
+     *   ]
+     * }
+     */
+    public function storeBatch(Request $request)
+    {
+        $request->validate([
+            'entries'             => 'required|array|min:1',
+            'entries.*.date'      => 'required|date',
+            'entries.*.usd'       => 'required|numeric|min:0',
+            'entries.*.cdf'       => 'required|numeric|min:0',
+        ]);
+
+        $result = $this->idefFretService->upsertBatch($request->input('entries'));
+
+        return response()->json($result, 200);
+    }
+
+    /**
      * Update an idef fret entry.
      */
     public function update(Request $request, IdefFret $idefFret)
@@ -80,6 +108,4 @@ class IdefFretController extends Controller
             ? response()->json($ideFrets)
             : ApiResponse::error('IdefFrets not found', 404);
     }
-
-
-}
+}   

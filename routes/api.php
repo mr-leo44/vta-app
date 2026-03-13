@@ -118,6 +118,7 @@ Route::apiResource('flights', FlightController::class);
 
 // IdefFret routes
 Route::prefix('idef-frets')->group(function () {
+    Route::post('/batch', [IdefFretController::class, 'storeBatch']);
     Route::get('/by-date/{date}', [IdefFretController::class, 'getIdefFretByDate'])->name('idefrets.byDate');
     Route::get('/range/{from}/{to}', [IdefFretController::class, 'getIdefFretsByRange'])->name('idefrets.range');
 });

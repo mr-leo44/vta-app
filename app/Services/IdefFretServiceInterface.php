@@ -12,4 +12,5 @@ interface IdefFretServiceInterface
     public function deleteIdefFret(IdefFret $idefFret): bool;
     public function findByDate(string $date): ?IdefFret;
     public function getByDateRange(string $from, string $to): Collection;
+    public function upsertBatch(array $entries): array;
 }

@@ -69,7 +69,7 @@ class PaxbusYearlySyntheticsStatSheet implements FromArray, ShouldAutoSize, With
 
         // En-têtes (2 lignes)
         $data[] = ['MOIS', 'NOMBRES DES PAX INTERNATIONAL', 'PMAD POUR LES AERONEFS NATIONAUX', '', ''];
-        $data[] = ['', '', '≥ 50 TONNES', '< 50 TONNES', ''];
+        $data[] = ['', '', '≥ 50 TONNES', '< 50 TONNES', 'TOTAL'];
 
         // Données brutes par mois
         foreach ($this->domesticData['pax'] as $monthIndex => $domesticMonthData) {

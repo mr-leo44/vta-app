@@ -5,10 +5,8 @@ namespace App\Http\Controllers\Api;
 use Carbon\Carbon;
 use App\Models\Flight;
 use App\Models\Operator;
-use App\Enums\FlightNatureEnum;
 use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
-use App\Enums\FlightTypeEnum;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
 use App\Services\IdefFretServiceInterface;
@@ -19,32 +17,28 @@ use Illuminate\Support\Collection;
 /**
  * @group ReportManagement
  *
- * Unified IDEF statistics report controller.
+ * Unified IDEF statistics report.
  *
  * Combines PAX (traffic / gopass / paxbus), freight and excedents
- * for both domestic and international regimes in a single response,
- * either aggregated or broken down per operator.
+ * for both domestic and international regimes in a single response.
  *
  * Route prefix : /api/report
  */
 class ReportController extends Controller
 {
     public function __construct(
-        protected IdefFretServiceInterface   $idefFretService,
+        protected IdefFretServiceInterface    $idefFretService,
         protected MonthlyRateServiceInterface $monthlyRateService,
     ) {}
 
     // =========================================================================
-    // PUBLIC ENDPOINTS
+    // PUBLIC — AGGREGATED
     // =========================================================================
 
     /**
-     * Monthly report — aggregated by regime.
+     * Monthly report — one row per calendar day, all operators merged.
      *
      * GET /report/monthly/{month}/{year}
-     *
-     * Returns one row per calendar day for every metric, merged across both
-     * regimes, plus the raw IDEF fret entries and the monthly exchange rate.
      *
      * Response shape:
      * {
@@ -54,11 +48,11 @@ class ReportController extends Controller
      *     "excedents": [{ "DATE":"01/02/2026", "traffic":12,  "idef":10  }, …]
      *   },
      *   "international": {
-     *     "pax":          [{ "DATE":…, "traffic":…, "gopass":…, "paxbus":… }, …],
-     *     "fret_depart":  [{ "DATE":…, "traffic":…, "idef":…  }, …],
-     *     "fret_arrivee": […],
-     *     "exced_depart": […],
-     *     "exced_arrivee":[…]
+     *     "pax":           [{ "DATE":…, "traffic":…, "gopass":…, "paxbus":… }, …],
+     *     "fret_depart":   [{ "DATE":…, "traffic":…, "idef":…  }, …],
+     *     "fret_arrivee":  […],
+     *     "exced_depart":  […],
+     *     "exced_arrivee": […]
      *   },
      *   "idef_fret":    [{ "DATE":"01/02/2026", "usd":120, "cdf":500 }, …],
      *   "monthly_rate": 2850
@@ -83,13 +77,12 @@ class ReportController extends Controller
     }
 
     /**
-     * Annual report — aggregated by regime.
+     * Annual report — one row per month, all operators merged.
      *
      * GET /report/yearly/{year}
      *
-     * Same shape as monthly but one row per month (keyed "MOIS" → "MM-YYYY").
-     * idef_fret contains monthly totals; each row also carries the exchange rate
-     * for that specific month.
+     * Same shape as monthly but keyed "MOIS" → "MM-YYYY".
+     * idef_fret rows carry monthly totals + exchange rate for that month.
      */
     public function yearly(string|int $year): array|JsonResponse
     {
@@ -108,24 +101,29 @@ class ReportController extends Controller
         ];
     }
 
+    // =========================================================================
+    // PUBLIC — BY OPERATOR (one total per operator, no time breakdown)
+    // =========================================================================
+
     /**
-     * Monthly report — broken down by operator within each regime.
+     * Monthly report — one cumulative total per operator for the whole month.
      *
      * GET /report/monthly/{month}/{year}/by-operators
-     *
-     * Each metric dataset is keyed by operator sigle instead of being flat.
      *
      * Response shape:
      * {
      *   "domestic": {
-     *     "pax": {
-     *       "AA": [{ "DATE":"01/02/2026", "traffic":45, "gopass":38, "paxbus":36 }, …],
-     *       "BB": […]
-     *     },
-     *     "fret":      { "AA": […], "BB": […] },
-     *     "excedents": { "AA": […], "BB": […] }
+     *     "pax":      { "AA": { "traffic":500, "gopass":420, "paxbus":410 }, "BB": {…} },
+     *     "fret":     { "AA": { "traffic":1200, "idef":980 }, … },
+     *     "excedents":{ "AA": { "traffic":30, "idef":25 }, … }
      *   },
-     *   "international": { … same structure … },
+     *   "international": {
+     *     "pax":           { "AA": { "traffic":…, "gopass":…, "paxbus":… }, … },
+     *     "fret_depart":   { "AA": { "traffic":…, "idef":… }, … },
+     *     "fret_arrivee":  {…},
+     *     "exced_depart":  {…},
+     *     "exced_arrivee": {…}
+     *   },
      *   "idef_fret":    […],
      *   "monthly_rate": 2850
      * }
@@ -138,18 +136,19 @@ class ReportController extends Controller
             return ApiResponse::error('Pas de données disponibles', 400);
         }
 
-        $days = $this->getDaysOfMonth($month, $year);
+        $start = Carbon::create($year, $month, 1)->startOfMonth();
+        $end   = Carbon::create($year, $month, 1)->endOfMonth();
 
         return [
-            'domestic'      => $this->buildMonthlyByOperator($days, FlightRegimeEnum::DOMESTIC->value),
-            'international' => $this->buildMonthlyByOperator($days, FlightRegimeEnum::INTERNATIONAL->value),
+            'domestic'      => $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::DOMESTIC->value),
+            'international' => $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::INTERNATIONAL->value),
             'idef_fret'     => $this->idefFretByDays($month, $year),
             'monthly_rate'  => $this->monthlyRateService->findByMonth((string) $month, (string) $year)?->rate,
         ];
     }
 
     /**
-     * Annual report — broken down by operator within each regime.
+     * Annual report — one cumulative total per operator for the whole year.
      *
      * GET /report/yearly/{year}/by-operators
      */
@@ -161,71 +160,64 @@ class ReportController extends Controller
             return ApiResponse::error('Pas de données disponibles', 400);
         }
 
-        $months = range(1, 12);
+        $start = Carbon::create($year, 1, 1)->startOfYear();
+        $end   = Carbon::create($year, 12, 31)->endOfYear();
 
         return [
-            'domestic'      => $this->buildAnnualByOperator($months, $year, FlightRegimeEnum::DOMESTIC->value),
-            'international' => $this->buildAnnualByOperator($months, $year, FlightRegimeEnum::INTERNATIONAL->value),
-            'idef_fret'     => $this->idefFretByMonths($months, $year),
+            'domestic'      => $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::DOMESTIC->value),
+            'international' => $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::INTERNATIONAL->value),
+            'idef_fret'     => $this->idefFretByMonths(range(1, 12), $year),
         ];
     }
 
     // =========================================================================
-    // MONTHLY BUILDERS — AGGREGATED
+    // BUILDERS — AGGREGATED
     // =========================================================================
 
     /**
-     * Build every metric for one regime, one row per day.
-     *
-     * A single DB query fetches all flights for the period; filtering is then
-     * done in memory to avoid N+1 query problems.
+     * One row per day, all operators summed together.
+     * Single DB query for the whole month, filtering done in memory.
      */
     private function buildMonthlyRegime(array $days, string $regime): array
     {
         $start   = Carbon::parse($days[0])->startOfDay();
         $end     = Carbon::parse(end($days))->endOfDay();
         $flights = $this->fetchFlights($start, $end, $regime);
+        $isInt   = $regime === FlightRegimeEnum::INTERNATIONAL->value;
 
-        $isInt = $regime === FlightRegimeEnum::INTERNATIONAL->value;
-
-        $pax      = [];
-        $fretDep  = [];
-        $fretArr  = [];
-        $excedDep = [];
-        $excedArr = [];
+        $pax = $fretDep = $fretArr = $excedDep = $excedArr = [];
 
         foreach ($days as $day) {
             $dayFlights = $flights->filter(
                 fn($f) => Carbon::parse($f->departure_time)->format('Y-m-d') === $day
             );
 
-            $stats = $this->aggregate($dayFlights, $regime);
+            $s     = $this->aggregate($dayFlights, $regime);
             $label = ['DATE' => Carbon::parse($day)->format('d/m/Y')];
 
-            $pax[]     = $label + $this->paxRow($stats);
-            $fretDep[] = $label + ['traffic' => $stats['fret_dep'], 'idef' => $stats['idef_fret_dep']];
-            $excedDep[] = $label + ['traffic' => $stats['exced_dep'], 'idef' => $stats['idef_exced_dep']];
+            $pax[]      = $label + ['traffic' => $s['pax'],       'gopass' => $s['gopass'], 'paxbus' => $s['paxbus']];
+            $fretDep[]  = $label + ['traffic' => $s['fret_dep'],  'idef'   => $s['idef_fret_dep']];
+            $excedDep[] = $label + ['traffic' => $s['exced_dep'], 'idef'   => $s['idef_exced_dep']];
 
             if ($isInt) {
-                $fretArr[]  = $label + ['traffic' => $stats['fret_arr'],  'idef' => $stats['idef_fret_arr']];
-                $excedArr[] = $label + ['traffic' => $stats['exced_arr'], 'idef' => $stats['idef_exced_arr']];
+                $fretArr[]  = $label + ['traffic' => $s['fret_arr'],  'idef' => $s['idef_fret_arr']];
+                $excedArr[] = $label + ['traffic' => $s['exced_arr'], 'idef' => $s['idef_exced_arr']];
             }
         }
 
-        return $this->shapeResult($isInt, $pax, $fretDep, $excedDep, $fretArr, $excedArr);
+        return $this->shapeRegime($isInt, $pax, $fretDep, $excedDep, $fretArr, $excedArr);
     }
 
-    // =========================================================================
-    // ANNUAL BUILDERS — AGGREGATED
-    // =========================================================================
-
+    /**
+     * One row per month, all operators summed together.
+     * Single DB query for the whole year, filtering done in memory.
+     */
     private function buildAnnualRegime(array $months, int $year, string $regime): array
     {
         $start   = Carbon::create($year, 1, 1)->startOfYear();
         $end     = Carbon::create($year, 12, 31)->endOfYear();
         $flights = $this->fetchFlights($start, $end, $regime);
-
-        $isInt = $regime === FlightRegimeEnum::INTERNATIONAL->value;
+        $isInt   = $regime === FlightRegimeEnum::INTERNATIONAL->value;
 
         $pax = $fretDep = $fretArr = $excedDep = $excedArr = [];
 
@@ -235,114 +227,66 @@ class ReportController extends Controller
                 return $d->month === $month && $d->year === $year;
             });
 
-            $stats = $this->aggregate($monthFlights, $regime);
+            $s     = $this->aggregate($monthFlights, $regime);
             $label = ['MOIS' => Carbon::create($year, $month, 1)->format('m-Y')];
 
-            $pax[]      = $label + $this->paxRow($stats);
-            $fretDep[]  = $label + ['traffic' => $stats['fret_dep'],  'idef' => $stats['idef_fret_dep']];
-            $excedDep[] = $label + ['traffic' => $stats['exced_dep'], 'idef' => $stats['idef_exced_dep']];
+            $pax[]      = $label + ['traffic' => $s['pax'],       'gopass' => $s['gopass'], 'paxbus' => $s['paxbus']];
+            $fretDep[]  = $label + ['traffic' => $s['fret_dep'],  'idef'   => $s['idef_fret_dep']];
+            $excedDep[] = $label + ['traffic' => $s['exced_dep'], 'idef'   => $s['idef_exced_dep']];
 
             if ($isInt) {
-                $fretArr[]  = $label + ['traffic' => $stats['fret_arr'],  'idef' => $stats['idef_fret_arr']];
-                $excedArr[] = $label + ['traffic' => $stats['exced_arr'], 'idef' => $stats['idef_exced_arr']];
+                $fretArr[]  = $label + ['traffic' => $s['fret_arr'],  'idef' => $s['idef_fret_arr']];
+                $excedArr[] = $label + ['traffic' => $s['exced_arr'], 'idef' => $s['idef_exced_arr']];
             }
         }
 
-        return $this->shapeResult($isInt, $pax, $fretDep, $excedDep, $fretArr, $excedArr);
+        return $this->shapeRegime($isInt, $pax, $fretDep, $excedDep, $fretArr, $excedArr);
     }
 
     // =========================================================================
-    // MONTHLY BUILDERS — BY OPERATOR
-    // =========================================================================
-
-    private function buildMonthlyByOperator(array $days, string $regime): array
-    {
-        $start     = Carbon::parse($days[0])->startOfDay();
-        $end       = Carbon::parse(end($days))->endOfDay();
-        $operators = $this->getOperators($regime);
-        $flights   = $this->fetchFlights($start, $end, $regime);
-
-        $isInt = $regime === FlightRegimeEnum::INTERNATIONAL->value;
-
-        $pax = $fretDep = $fretArr = $excedDep = $excedArr = [];
-
-        foreach ($operators as $op) {
-            $opFlights = $flights->where('operator_id', $op->id);
-
-            foreach ($days as $day) {
-                $dayFlights = $opFlights->filter(
-                    fn($f) => Carbon::parse($f->departure_time)->format('Y-m-d') === $day
-                );
-
-                $stats = $this->aggregate($dayFlights, $regime);
-                $label = ['DATE' => Carbon::parse($day)->format('d/m/Y')];
-
-                $pax[$op->sigle][]      = $label + $this->paxRow($stats);
-                $fretDep[$op->sigle][]  = $label + ['traffic' => $stats['fret_dep'],  'idef' => $stats['idef_fret_dep']];
-                $excedDep[$op->sigle][] = $label + ['traffic' => $stats['exced_dep'], 'idef' => $stats['idef_exced_dep']];
-
-                if ($isInt) {
-                    $fretArr[$op->sigle][]  = $label + ['traffic' => $stats['fret_arr'],  'idef' => $stats['idef_fret_arr']];
-                    $excedArr[$op->sigle][] = $label + ['traffic' => $stats['exced_arr'], 'idef' => $stats['idef_exced_arr']];
-                }
-            }
-        }
-
-        return $this->shapeResult($isInt, $pax, $fretDep, $excedDep, $fretArr, $excedArr);
-    }
-
-    // =========================================================================
-    // ANNUAL BUILDERS — BY OPERATOR
-    // =========================================================================
-
-    private function buildAnnualByOperator(array $months, int $year, string $regime): array
-    {
-        $start     = Carbon::create($year, 1, 1)->startOfYear();
-        $end       = Carbon::create($year, 12, 31)->endOfYear();
-        $operators = $this->getOperators($regime);
-        $flights   = $this->fetchFlights($start, $end, $regime);
-
-        $isInt = $regime === FlightRegimeEnum::INTERNATIONAL->value;
-
-        $pax = $fretDep = $fretArr = $excedDep = $excedArr = [];
-
-        foreach ($operators as $op) {
-            $opFlights = $flights->where('operator_id', $op->id);
-
-            foreach ($months as $month) {
-                $monthFlights = $opFlights->filter(function ($f) use ($month, $year) {
-                    $d = Carbon::parse($f->departure_time);
-                    return $d->month === $month && $d->year === $year;
-                });
-
-                $stats = $this->aggregate($monthFlights, $regime);
-                $label = ['MOIS' => Carbon::create($year, $month, 1)->format('m-Y')];
-
-                $pax[$op->sigle][]      = $label + $this->paxRow($stats);
-                $fretDep[$op->sigle][]  = $label + ['traffic' => $stats['fret_dep'],  'idef' => $stats['idef_fret_dep']];
-                $excedDep[$op->sigle][] = $label + ['traffic' => $stats['exced_dep'], 'idef' => $stats['idef_exced_dep']];
-
-                if ($isInt) {
-                    $fretArr[$op->sigle][]  = $label + ['traffic' => $stats['fret_arr'],  'idef' => $stats['idef_fret_arr']];
-                    $excedArr[$op->sigle][] = $label + ['traffic' => $stats['exced_arr'], 'idef' => $stats['idef_exced_arr']];
-                }
-            }
-        }
-
-        return $this->shapeResult($isInt, $pax, $fretDep, $excedDep, $fretArr, $excedArr);
-    }
-
-    // =========================================================================
-    // AGGREGATION HELPERS
+    // BUILDER — BY OPERATOR (totals only)
     // =========================================================================
 
     /**
-     * Fetch all relevant flights for a date range and regime in one query.
-     * The relation `statistic` is eager-loaded to avoid N+1 issues.
+     * One keyed entry per operator — no day or month breakdown.
+     * Single DB query for the period, filtered in memory per operator.
+     */
+    private function buildTotalsByOperator(Carbon $start, Carbon $end, string $regime): array
+    {
+        $flights   = $this->fetchFlights($start, $end, $regime);
+        $operators = $this->getOperators($regime);
+        $isInt     = $regime === FlightRegimeEnum::INTERNATIONAL->value;
+
+        $pax = $fretDep = $fretArr = $excedDep = $excedArr = [];
+
+        foreach ($operators as $op) {
+            $opFlights = $flights->where('operator_id', $op->id);
+            $s         = $this->aggregate($opFlights, $regime);
+
+            $pax[$op->sigle]      = ['traffic' => $s['pax'],       'gopass' => $s['gopass'], 'paxbus' => $s['paxbus']];
+            $fretDep[$op->sigle]  = ['traffic' => $s['fret_dep'],  'idef'   => $s['idef_fret_dep']];
+            $excedDep[$op->sigle] = ['traffic' => $s['exced_dep'], 'idef'   => $s['idef_exced_dep']];
+
+            if ($isInt) {
+                $fretArr[$op->sigle]  = ['traffic' => $s['fret_arr'],  'idef' => $s['idef_fret_arr']];
+                $excedArr[$op->sigle] = ['traffic' => $s['exced_arr'], 'idef' => $s['idef_exced_arr']];
+            }
+        }
+
+        return $this->shapeRegime($isInt, $pax, $fretDep, $excedDep, $fretArr, $excedArr);
+    }
+
+    // =========================================================================
+    // AGGREGATION
+    // =========================================================================
+
+    /**
+     * Fetch flights for a period and regime — single query, eager-loads
+     * statistic and operator relations.
      */
     private function fetchFlights(Carbon $start, Carbon $end, string $regime): Collection
     {
-        return Flight::with('statistic')
+        return Flight::with(['statistic', 'operator'])
             ->where('flight_regime', $regime)
             ->whereBetween('departure_time', [$start, $end])
             ->where('status', FlightStatusEnum::DEPARTED)
@@ -350,103 +294,60 @@ class ReportController extends Controller
     }
 
     /**
-     * Aggregate statistics from a collection of flights for a given regime.
+     * Sum all metrics from a flight collection.
      *
-     * Returns a flat array with all metrics needed:
-     *   pax, gopass, paxbus, justifications,
-     *   fret_dep, fret_arr (int only for domestic),
-     *   idef_fret_dep, idef_fret_arr,
-     *   exced_dep, exced_arr,
-     *   idef_exced_dep, idef_exced_arr
-     *
-     * The IDEF columns correspond to non-UN (non-exonerated) flights.
-     * UN operator flights count toward traffic but not toward IDEF.
+     * UN operator flights count toward traffic but NOT toward idef columns
+     * (they are exonerated and thus excluded from IDEF billing).
      */
     private function aggregate(Collection $flights, string $regime): array
     {
-        $isInt = $regime === FlightRegimeEnum::INTERNATIONAL->value;
-
-        $stats = [
-            'pax'           => 0,
-            'gopass'        => 0,
-            'paxbus'        => 0,
-            'justifications'=> [],
-            'fret_dep'      => 0,
-            'fret_arr'      => 0,
-            'idef_fret_dep' => 0,
-            'idef_fret_arr' => 0,
-            'exced_dep'     => 0,
-            'exced_arr'     => 0,
-            'idef_exced_dep'=> 0,
-            'idef_exced_arr'=> 0,
+        $s = [
+            'pax'            => 0, 'gopass'         => 0, 'paxbus'         => 0,
+            'fret_dep'       => 0, 'fret_arr'       => 0,
+            'idef_fret_dep'  => 0, 'idef_fret_arr'  => 0,
+            'exced_dep'      => 0, 'exced_arr'      => 0,
+            'idef_exced_dep' => 0, 'idef_exced_arr' => 0,
         ];
 
         foreach ($flights as $flight) {
             $stat = $flight->statistic;
             if (!$stat) continue;
 
-            $isUN = $flight->operator?->sigle === 'UN';
+            $isUN = ($flight->operator?->sigle === 'UN');
 
-            $stats['pax']    += (int) ($stat->passengers_count ?? 0);
-            $stats['gopass'] += (int) ($stat->go_pass_count    ?? 0);
-            $stats['paxbus'] += (int) ($stat->pax_bus          ?? 0);
+            $s['pax']    += (int) ($stat->passengers_count ?? 0);
+            $s['gopass'] += (int) ($stat->go_pass_count    ?? 0);
+            $s['paxbus'] += (int) ($stat->pax_bus          ?? 0);
 
-            // Freight
-            $fretDep = (int) ($stat->fret_count['departure'] ?? 0);
-            $fretArr = (int) ($stat->fret_count['arrival']   ?? 0);
-            $stats['fret_dep'] += $fretDep;
-            $stats['fret_arr'] += $fretArr;
+            $fd = (int) ($stat->fret_count['departure'] ?? 0);
+            $fa = (int) ($stat->fret_count['arrival']   ?? 0);
+            $s['fret_dep'] += $fd;
+            $s['fret_arr'] += $fa;
             if (!$isUN) {
-                $stats['idef_fret_dep'] += $fretDep;
-                $stats['idef_fret_arr'] += $fretArr;
+                $s['idef_fret_dep'] += $fd;
+                $s['idef_fret_arr'] += $fa;
             }
 
-            // Excedents
-            $excedDep = (int) ($stat->excedents['departure'] ?? 0);
-            $excedArr = (int) ($stat->excedents['arrival']   ?? 0);
-            $stats['exced_dep'] += $excedDep;
-            $stats['exced_arr'] += $excedArr;
+            $ed = (int) ($stat->excedents['departure'] ?? 0);
+            $ea = (int) ($stat->excedents['arrival']   ?? 0);
+            $s['exced_dep'] += $ed;
+            $s['exced_arr'] += $ea;
             if (!$isUN) {
-                $stats['idef_exced_dep'] += $excedDep;
-                $stats['idef_exced_arr'] += $excedArr;
-            }
-
-            // Justifications (PAX ecart)
-            if ($stat->has_justification && is_array($stat->justification)) {
-                foreach ($stat->justification as $key => $value) {
-                    if (is_array($value)) {
-                        $stats['justifications'][$key] ??= [];
-                        foreach ($value as $subKey => $subVal) {
-                            $stats['justifications'][$key][$subKey] = ($stats['justifications'][$key][$subKey] ?? 0) + (int) $subVal;
-                        }
-                    } else {
-                        $stats['justifications'][$key] = ($stats['justifications'][$key] ?? 0) + (int) $value;
-                    }
-                }
+                $s['idef_exced_dep'] += $ed;
+                $s['idef_exced_arr'] += $ea;
             }
         }
 
-        return $stats;
+        return $s;
     }
 
     /**
-     * Build the PAX sub-array for a row.
+     * Normalise metric key names for domestic vs international.
+     *
+     * Domestic     → fret / excedents             (departure only)
+     * International → fret_depart / fret_arrivee / exced_depart / exced_arrivee
      */
-    private function paxRow(array $stats): array
-    {
-        return [
-            'traffic'        => $stats['pax'],
-            'gopass'         => $stats['gopass'],
-            'paxbus'         => $stats['paxbus'],
-            'justifications' => $stats['justifications'],
-        ];
-    }
-
-    /**
-     * Shape the final regime result depending on whether it is domestic or
-     * international (different metric keys are expected by the export sheets).
-     */
-    private function shapeResult(
+    private function shapeRegime(
         bool  $isInt,
         array $pax,
         array $fretDep,
@@ -456,11 +357,11 @@ class ReportController extends Controller
     ): array {
         if ($isInt) {
             return [
-                'pax'           => $pax,
-                'fret_depart'   => $fretDep,
-                'fret_arrivee'  => $fretArr,
-                'exced_depart'  => $excedDep,
-                'exced_arrivee' => $excedArr,
+                'pax'            => $pax,
+                'fret_depart'    => $fretDep,
+                'fret_arrivee'   => $fretArr,
+                'exced_depart'   => $excedDep,
+                'exced_arrivee'  => $excedArr,
             ];
         }
 
@@ -472,12 +373,11 @@ class ReportController extends Controller
     }
 
     // =========================================================================
-    // IDEF FRET HELPERS
+    // IDEF FRET
     // =========================================================================
 
     /**
-     * Return raw IDEF fret entries keyed by day for a month.
-     * Every calendar day appears even if no entry exists (defaults to 0).
+     * One entry per calendar day; missing days default to usd=0 / cdf=0.
      */
     private function idefFretByDays(int $month, int $year): array
     {
@@ -502,14 +402,14 @@ class ReportController extends Controller
     }
 
     /**
-     * Return IDEF fret entries aggregated by month for a full year.
-     * Each row also carries the exchange rate for that month.
+     * One entry per month with totals and the monthly exchange rate.
      */
     private function idefFretByMonths(array $months, int $year): array
     {
         return collect($months)->map(function ($month) use ($year) {
             $days = $this->idefFretByDays($month, $year);
-            $rate = $this->monthlyRateService->findByMonth((string) $month, (string) $year)?->rate ?? 0;
+            $rate = $this->monthlyRateService
+                ->findByMonth((string) $month, (string) $year)?->rate ?? 0;
 
             return [
                 'MOIS' => Carbon::create($year, $month, 1)->format('m-Y'),
@@ -521,11 +421,12 @@ class ReportController extends Controller
     }
 
     // =========================================================================
-    // QUERY HELPERS
+    // UTILITIES
     // =========================================================================
 
     /**
-     * Check whether flight data exists for the given period and any regime.
+     * Return true if at least one departed flight exists in the period
+     * (checked across both regimes so a partial month is not rejected).
      */
     private function hasData(?int $month, int $year): bool
     {
@@ -547,39 +448,25 @@ class ReportController extends Controller
     }
 
     /**
-     * Return all operators that have departed flights for the given regime.
+     * All operators with at least one departed flight for the given regime.
      */
     private function getOperators(string $regime): Collection
     {
-        return Operator::with('aircrafts')
-            ->whereHas('flights', fn($q) => $q
-                ->where('flight_regime', $regime)
-                ->where('status', FlightStatusEnum::DEPARTED)
-            )
-            ->orderBy('sigle')
-            ->get();
+        return Operator::whereHas('flights', fn($q) => $q
+            ->where('flight_regime', $regime)
+            ->where('status', FlightStatusEnum::DEPARTED)
+        )
+        ->orderBy('sigle')
+        ->get();
     }
 
     /**
-     * Return an array of YYYY-MM-DD strings for every day of the given month.
+     * Every day of the month as an array of YYYY-MM-DD strings.
      */
     private function getDaysOfMonth(int $month, int $year): array
     {
         return collect(range(1, Carbon::create($year, $month, 1)->daysInMonth))
             ->map(fn($d) => Carbon::create($year, $month, $d)->format('Y-m-d'))
             ->toArray();
-    }
-
-    /**
-     * Return the French name of a month number.
-     */
-    private function getMonthName(int $month): string
-    {
-        return [
-            1  => 'JANVIER',  2  => 'FÉVRIER',   3  => 'MARS',
-            4  => 'AVRIL',    5  => 'MAI',        6  => 'JUIN',
-            7  => 'JUILLET',  8  => 'AOÛT',       9  => 'SEPTEMBRE',
-            10 => 'OCTOBRE',  11 => 'NOVEMBRE',   12 => 'DÉCEMBRE',
-        ][$month] ?? 'INCONNU';
     }
 }

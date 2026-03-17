@@ -7,25 +7,39 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
+/**
+ * Feuille annuelle IDEF Fret (récapitulatif mensuel).
+ *
+ * Colonnes :
+ *   A  MOIS
+ *   B  POIDS 1/0,009          = CEILING(C / 0.009, 1)       ← formule Excel
+ *   C  USD
+ *   D  CDF
+ *   E  VALEUR EN $ tx/Mois    = CEILING(D / rate_du_mois, 1) ← formule Excel
+ *   F  POIDS 2/0,009          = CEILING(E / 0.009, 1)        ← formule Excel
+ *   G  TOTAL POIDS            = B + F                        ← formule Excel
+ *
+ * Le taux mensuel est injecté colonne H (masquée / hors-tableau) afin que
+ * chaque ligne puisse s'y référer dynamiquement via =CEILING(D{n}/H{n},1).
+ * Cela permet de modifier le taux directement dans la cellule H pour recalculer.
+ */
 class AnnualIdefFretStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
 {
-    protected $sheetTitle;
-    protected $title;
-    protected $rows;
-    protected $annexeNumber;
-
+    protected string $sheetTitle;
+    protected string $title;
+    protected array  $rows;
+    protected string $annexeNumber;
 
     public function __construct(string $sheetTitle, string $title, array $rows, string $annexeNumber)
     {
-        $this->sheetTitle = $sheetTitle;
-        $this->title = $title;
-        $this->rows = $rows;
+        $this->sheetTitle   = $sheetTitle;
+        $this->title        = $title;
+        $this->rows         = $rows;
         $this->annexeNumber = $annexeNumber;
     }
 
@@ -34,12 +48,14 @@ class AnnualIdefFretStatSheet implements WithTitle, ShouldAutoSize, FromArray, W
         return substr($this->sheetTitle, 0, 50);
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // array() : données brutes uniquement (MOIS, USD, CDF, taux)
+    // ─────────────────────────────────────────────────────────────────────────
     public function array(): array
     {
-        $cols = 7; // DATE + POIDS 1 + USD + CDF + VALEUR EN $ + POIDS 2 + TOTAL
+        $cols = 8; // A..G + H (taux caché)
         $data = [];
 
-        // TITRES
         foreach (
             [
                 ['SERVICE VTA'],
@@ -53,68 +69,92 @@ class AnnualIdefFretStatSheet implements WithTitle, ShouldAutoSize, FromArray, W
             $data[] = array_pad($line, $cols, '');
         }
 
-        // EN-TÊTES
-        $data[] = ['MOIS', 'POIDS 1/0,009', 'USD', 'MONTANT EN CAISSE', '', '', 'TOTAL POIDS'];
-        $data[] = ['', '', '', 'CDF', '', '', ''];
-        $data[] = ['', '', '', 'CDF', "VALEUR EN $ tx/Mois", 'POIDS 2/0,009', ''];
+        // En-têtes (3 lignes, fusionnées dans AfterSheet)
+        $data[] = ['MOIS', 'POIDS 1/0,009', 'USD', 'MONTANT EN CAISSE', '', '', 'TOTAL POIDS', 'TAUX'];
+        $data[] = ['', '', '', 'CDF', '', '', '', ''];
+        $data[] = ['', '', '', 'CDF', 'VALEUR EN $ tx/Mois', 'POIDS 2/0,009', '', ''];
 
+        // Données brutes : MOIS, USD, CDF, taux (col H)
         foreach ($this->rows['idef_fret'] as $row) {
-            $cdfRateProportion = (int)ceil($row['cdf'] / $row['rate']);
-            $usdFreight = (int)ceil($row['usd'] / 0.009);
-            $cdfFreight = (int)($cdfRateProportion / 0.009);
-            $data[] = ["MOIS" => $this->getMonthName($row['MOIS']), $usdFreight, $row['usd'], $row['cdf'], $cdfRateProportion, $cdfFreight, $usdFreight + $cdfFreight];
+            $data[] = [
+                $this->getMonthName($row['MOIS']), // A
+                '',                                // B ← formule
+                $row['usd'],                       // C ← brut
+                $row['cdf'],                       // D ← brut
+                '',                                // E ← formule
+                '',                                // F ← formule
+                '',                                // G ← formule
+                $row['rate'],                      // H ← taux du mois (utilisé par formule E)
+            ];
         }
 
-        $data[] = ['TOTAL', '', '', '', '']; // Total line
+        $data[] = array_pad(['TOTAL'], $cols, '');
 
-        // LIGNES VIDES AVANT SIGNATURE
         $data[] = array_fill(0, $cols, '');
 
-        // SIGNATURE
-        $sig1 = array_fill(0, $cols, '');
+        $sig1    = array_fill(0, $cols, '');
         $sig1[0] = 'CB RECETTE:  KIBANZA';
-        $sig1[$cols - 3] = 'LE CHEF DE BUREAU IDEF';
-        $data[] = $sig1;
+        $sig1[4] = 'LE CHEF DE BUREAU IDEF';
+        $data[]  = $sig1;
 
-        $sig2 = array_fill(0, $cols, '');
+        $sig2    = array_fill(0, $cols, '');
         $sig2[0] = 'CB BANQUE : LOMPOKO';
-        $sig2[$cols - 3] = 'BANZE LUKUNGAY';
-        $data[] = $sig2;
-
+        $sig2[4] = 'BANZE LUKUNGAY';
+        $data[]  = $sig2;
 
         return $data;
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // registerEvents() : formules + style
+    // ─────────────────────────────────────────────────────────────────────────
     public function registerEvents(): array
     {
         return [
             AfterSheet::class => function (AfterSheet $event) {
                 $s = $event->sheet->getDelegate();
+
                 $s->getPageSetup()
                     ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
-                    ->setFitToPage(true)
-                    ->setFitToWidth(1)
-                    ->setFitToHeight(0)
+                    ->setFitToPage(true)->setFitToWidth(1)->setFitToHeight(0)
                     ->setHorizontalCentered(true);
+                $s->getPageMargins()->setTop(0.25)->setBottom(0.25)->setLeft(0.25)->setRight(0.25);
 
-                // MARGES
-                $s->getPageMargins()->setTop(0.25);
-                $s->getPageMargins()->setBottom(0.25);
-                $s->getPageMargins()->setLeft(0.25);
-                $s->getPageMargins()->setRight(0.25);
+                $highestRow      = $s->getHighestRow();
+                $headerRow       = 7;
+                $firstDataRow    = $headerRow + 3;
+                $lastDataRow     = $highestRow - 3; // ligne TOTAL
 
-                // DIMENSIONS
-                $highestRow = $s->getHighestRow();
-                $lastDataRow = $highestRow - 3; // La ligne avant les 2 lignes de signature + la ligne TOTAL
-                $highestCol = $s->getHighestColumn();
-                $highestColIndex = Coordinate::columnIndexFromString($highestCol);
-                // LIGNES DE DONNÉES
-                $headerRow = 7; // La ligne où commencent les données (après les titres)          
-                $firstDataRow = $headerRow + 3; // La ligne où commencent les données (après les titres et la ligne vide)
+                // ── Formules par ligne ────────────────────────────────────
+                for ($row = $firstDataRow; $row <= $lastDataRow - 1; $row++) {
+                    // B = CEILING(C / 0.009, 1)
+                    $s->getCell("B{$row}")->setValue("=IFERROR(CEILING(C{$row}/0.009,1),0)");
+                    // E = CEILING(D / H[taux], 1)  — H contient le taux du mois
+                    $s->getCell("E{$row}")->setValue("=IFERROR(CEILING(D{$row}/H{$row},1),0)");
+                    // F = CEILING(E / 0.009, 1)
+                    $s->getCell("F{$row}")->setValue("=IFERROR(CEILING(E{$row}/0.009,1),0)");
+                    // G = B + F
+                    $s->getCell("G{$row}")->setValue("=B{$row}+F{$row}");
 
-                // Lignes 1-4 : Alignées à gauche
+                    // Forcer numérique sur données brutes
+                    $s->setCellValueExplicit("C{$row}", $s->getCell("C{$row}")->getValue(), DataType::TYPE_NUMERIC);
+                    $s->setCellValueExplicit("D{$row}", $s->getCell("D{$row}")->getValue(), DataType::TYPE_NUMERIC);
+                    $s->setCellValueExplicit("H{$row}", $s->getCell("H{$row}")->getValue(), DataType::TYPE_NUMERIC);
+                }
+
+                // ── Ligne TOTAL ───────────────────────────────────────────
+                $lastContent = $lastDataRow - 1;
+                foreach (['B', 'C', 'D', 'E', 'F', 'G'] as $col) {
+                    $s->getCell("{$col}{$lastDataRow}")
+                        ->setValue("=SUM({$col}{$firstDataRow}:{$col}{$lastContent})");
+                }
+
+                // ── Masquer colonne H (taux) ──────────────────────────────
+                $s->getColumnDimension('H')->setVisible(false);
+
+                // ── Style titres ──────────────────────────────────────────
                 for ($row = 1; $row <= 4; $row++) {
-                    $s->mergeCells("A{$row}:{$highestCol}{$row}");
+                    $s->mergeCells("A{$row}:G{$row}");
                     $s->getStyle("A{$row}")->getFont()->setBold(false)->setSize(12);
                     $s->getStyle("A{$row}")->getAlignment()
                         ->setHorizontal(Alignment::HORIZONTAL_LEFT)
@@ -122,126 +162,86 @@ class AnnualIdefFretStatSheet implements WithTitle, ShouldAutoSize, FromArray, W
                 }
 
                 $s->getStyle("B5")->getFont()->setBold(false)->setSize(14);
-                // Ligne 5 : TITRE PRINCIPAL (CENTRÉ)
-                $s->mergeCells("A6:{$highestCol}6");
+                $s->mergeCells("A6:G6");
                 $s->getStyle("A6")->getFont()->setBold(true)->setSize(16);
                 $s->getStyle("A6")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER) // ✅ Centré
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                     ->setVertical(Alignment::VERTICAL_CENTER);
-                $s->getStyle("A6")
-                    ->getFill()->setFillType('solid')
+                $s->getStyle("A6")->getFill()->setFillType('solid')
                     ->getStartColor()->setARGB('FFD9E1F2');
 
-                // STYLE EN-TÊTES
-                $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
-                    ->getFont()->setBold(true)->setSize(13);
-                $s->getStyle("A{$headerRow}:{$highestCol}" . ($headerRow + 2))
-                    ->getFill()->setFillType('solid')
-                    ->getStartColor()->setARGB('FF4472C4');
-                $s->getStyle("A{$headerRow}:{$highestCol}" . ($headerRow + 2))
+                // ── Style en-têtes (3 lignes) ─────────────────────────────
+                $s->getStyle("A{$headerRow}:G" . ($headerRow + 2))
+                    ->getFill()->setFillType('solid')->getStartColor()->setARGB('FF4472C4');
+                $s->getStyle("A{$headerRow}:G" . ($headerRow + 2))
                     ->getFont()->getColor()->setARGB('FFFFFFFF');
-                $s->getStyle("A{$headerRow}:{$highestCol}" . ($headerRow + 2))
+                $s->getStyle("A{$headerRow}:G" . ($headerRow + 2))
+                    ->getFont()->setBold(true)->setSize(13);
+                $s->getStyle("A{$headerRow}:G" . ($headerRow + 2))
                     ->getAlignment()
                     ->setHorizontal(Alignment::HORIZONTAL_CENTER)
                     ->setVertical(Alignment::VERTICAL_CENTER);
 
-                $s->mergeCells("A{$headerRow}:A" . ($headerRow + 2)); // Fusionner la colonne A sur les 3 lignes d'en-têtes
-                $s->mergeCells("B{$headerRow}:B" . ($headerRow + 2)); // Fusionner la colonne B sur les 3 lignes d'en-têtes
-                $s->mergeCells("C{$headerRow}:C" . ($headerRow + 2)); // Fusionner la colonne C sur les 3 lignes d'en-têtes
-                $s->mergeCells("G{$headerRow}:G" . ($headerRow + 2)); // Fusionner la colonne G sur les 3 lignes d'en-têtes
-                $s->mergeCells("D{$headerRow}:F{$headerRow}"); // Fusionner les colonnes D à F sur la ligne d'en-tête 1
-                $s->mergeCells("D" . ($headerRow + 1) . ":F" . ($headerRow + 1)); // Fusionner les colonnes D à F sur la ligne d'en-tête 1
+                foreach (['A', 'B', 'C', 'G'] as $col) {
+                    $s->mergeCells("{$col}{$headerRow}:{$col}" . ($headerRow + 2));
+                }
+                $s->mergeCells("D{$headerRow}:F{$headerRow}");
+                $s->mergeCells("D" . ($headerRow + 1) . ":F" . ($headerRow + 1));
 
-                // BORDURES
-                $s->getStyle("A{$headerRow}:{$highestCol}{$lastDataRow}")
-                    ->getBorders()->getAllBorders()
-                    ->setBorderStyle(Border::BORDER_THIN);
+                // ── Bordures ──────────────────────────────────────────────
+                $s->getStyle("A{$headerRow}:G{$lastDataRow}")
+                    ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
 
-                $s->getStyle("C8:{$highestCol}8")
-                    ->getFont()->setSize(14);
-
-                // STYLE DES LIGNES DE DONNÉES
+                // ── Style données ─────────────────────────────────────────
                 for ($row = $firstDataRow; $row <= $lastDataRow; $row++) {
-                    $s->getStyle("A{$row}:{$highestCol}{$row}")
+                    $s->getStyle("A{$row}:G{$row}")
                         ->getAlignment()
                         ->setHorizontal(Alignment::HORIZONTAL_RIGHT)
                         ->setVertical(Alignment::VERTICAL_CENTER);
-                    $s->getStyle("A{$row}:{$highestCol}{$row}")
-                        ->getFont()
-                        ->setSize(14);
-
-                    for ($colIndex = 2; $colIndex <= $highestColIndex; $colIndex++) {
-                        $colLetter = Coordinate::stringFromColumnIndex($colIndex);
-                        $s->setCellValueExplicit("{$colLetter}{$row}", $s->getCell("{$colLetter}{$row}")->getValue(), DataType::TYPE_NUMERIC);
-                    }
+                    $s->getStyle("A{$row}:G{$row}")->getFont()->setSize(14);
                 }
 
-                // ═══════════════════════════════════════════════════════════
-                // ✅ FORMULES EXCEL POUR LES TOTAUX
-                // ═══════════════════════════════════════════════════════════
-
-                // Ligne TOTAUX : somme verticale pour chaque colonne
-                for ($col = 2; $col <= $highestColIndex; $col++) {
-                    $colLetter = Coordinate::stringFromColumnIndex($col);
-                    $latestDataRow = $lastDataRow - 1; // La ligne avant la ligne TOTAL
-                    $s->setCellValue(
-                        "{$colLetter}{$lastDataRow}",
-                        "=SUM({$colLetter}{$firstDataRow}:{$colLetter}{$latestDataRow})"
-                    );
+                // Mois : aligné à gauche
+                for ($row = $firstDataRow; $row <= $lastDataRow - 1; $row++) {
+                    $s->getStyle("A{$row}")->getAlignment()
+                        ->setHorizontal(Alignment::HORIZONTAL_LEFT);
                 }
 
-                // ═══════════════════════════════════════════════════════════
-                // STYLE LIGNE TOTAUX
-                // ═══════════════════════════════════════════════════════════
-                $s->getStyle("A{$lastDataRow}:{$highestCol}{$lastDataRow}")
+                // ── Style TOTAL ───────────────────────────────────────────
+                $s->getStyle("A{$lastDataRow}:G{$lastDataRow}")
                     ->getFont()->setBold(true)->setSize(16);
-                $s->getStyle("A{$lastDataRow}:{$highestCol}{$lastDataRow}")
-                    ->getBorders()->getTop()
-                    ->setBorderStyle(Border::BORDER_THIN);
-                $s->getStyle("A{$lastDataRow}:{$highestCol}{$lastDataRow}")
-                    ->getBorders()->getBottom()
-                    ->setBorderStyle(Border::BORDER_THIN);
+                $s->getStyle("A{$lastDataRow}:G{$lastDataRow}")
+                    ->getBorders()->getTop()->setBorderStyle(Border::BORDER_THIN);
+                $s->getStyle("A{$lastDataRow}:G{$lastDataRow}")
+                    ->getBorders()->getBottom()->setBorderStyle(Border::BORDER_THIN);
 
-                // Hauteur des lignes
+                // ── Hauteurs ──────────────────────────────────────────────
                 $s->getRowDimension($headerRow)->setRowHeight(25);
-
-                for ($row = 8; $row <= $lastDataRow; $row++) {
+                for ($row = $headerRow; $row <= $lastDataRow; $row++) {
                     $s->getRowDimension($row)->setRowHeight(24);
                 }
 
-                // ✅ 2 & 3. SIGNATURE : 2 colonnes depuis la droite, fusionnées et centrées
-                $signatureRow1 = $highestRow - 1;
-                $signatureRow2 = $signatureRow1 + 1;
-                // dd($signatureRow1, $signatureRow2, $highestColIndex);
+                // ── Signature ─────────────────────────────────────────────
+                $sigRow1  = $highestRow - 1;
+                $sigRow2  = $highestRow;
 
-                // ✅ 2 colonnes à partir de la droite
-                $signatureStartColIndex = $highestColIndex - 2;
-                $signatureStartCol = Coordinate::stringFromColumnIndex($signatureStartColIndex);
-                $signatureEndCol = Coordinate::stringFromColumnIndex($highestColIndex);
-                
-                // Ligne 1
-                $s->mergeCells("A{$signatureRow1}:B{$signatureRow1}");
-                $s->mergeCells("{$signatureStartCol}{$signatureRow1}:{$signatureEndCol}{$signatureRow1}");
-                $s->getStyle("{$signatureStartCol}{$signatureRow1}")
-                    ->getFont()->setBold(true)->setSize(11);
-                $s->getStyle("{$signatureStartCol}{$signatureRow1}")
-                    ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+                $s->mergeCells("A{$sigRow1}:B{$sigRow1}");
+                $s->mergeCells("E{$sigRow1}:G{$sigRow1}");
+                $s->getStyle("E{$sigRow1}")->getFont()->setBold(true)->setSize(11);
+                $s->getStyle("E{$sigRow1}")->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 
-                // Ligne 2 
-                $s->mergeCells("A{$signatureRow2}:B{$signatureRow2}");
-                $s->mergeCells("{$signatureStartCol}{$signatureRow2}:{$signatureEndCol}{$signatureRow2}");
-                $s->getStyle("{$signatureStartCol}{$signatureRow2}")
-                    ->getFont()->setBold(true)->setSize(12);
-                $s->getStyle("{$signatureStartCol}{$signatureRow2}")
-                    ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-            }
+                $s->mergeCells("A{$sigRow2}:B{$sigRow2}");
+                $s->mergeCells("E{$sigRow2}:G{$sigRow2}");
+                $s->getStyle("E{$sigRow2}")->getFont()->setBold(true)->setSize(12);
+                $s->getStyle("E{$sigRow2}")->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+            },
         ];
     }
 
-
-    private function getMonthName($row): string
+    private function getMonthName(string $row): string
     {
-        $rowExploded = explode('-', $row);
         $monthNames = [
             '01' => 'JANVIER',
             '02' => 'FÉVRIER',
@@ -256,7 +256,6 @@ class AnnualIdefFretStatSheet implements WithTitle, ShouldAutoSize, FromArray, W
             '11' => 'NOVEMBRE',
             '12' => 'DÉCEMBRE',
         ];
-
-        return $monthNames[$rowExploded[0]];
+        return $monthNames[explode('-', $row)[0]] ?? $row;
     }
 }

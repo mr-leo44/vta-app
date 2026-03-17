@@ -91,7 +91,7 @@ class PAXAnnualStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEv
         $sig1 = array_fill(0, $cols, '');
         $sig1[$cols - 3] = 'LE CHEF DE BUREAU IDEF';
         $data[] = $sig1;
-        
+
         $sig2 = array_fill(0, $cols, '');
         $sig2[$cols - 3] = 'BANZE LUKUNGAY';
         $data[] = $sig2;
@@ -206,7 +206,7 @@ class PAXAnnualStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEv
                     $allRowDatas = $this->rows[$rowIndex];
                     foreach ($allRowDatas as $key => $value) {
                         if (!in_array($key, $this->getCommercialOperators($this->operators))) continue; // On ne traite que les clés correspondant aux opérateurs
-        
+
                         $rowData[$key] = $value;
                     }
                     // Pour chaque opérateur
@@ -328,9 +328,9 @@ class PAXAnnualStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEv
 
     private function getMonthName($row): string
     {
-        $rowExploded = explode('-',$row);
+        $rowExploded = explode('-', $row);
         $monthNames = [
-            '01' => 'JANVIER', 
+            '01' => 'JANVIER',
             '02' => 'FÉVRIER',
             '03' => 'MARS',
             '04' => 'AVRIL',
@@ -343,8 +343,7 @@ class PAXAnnualStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEv
             '11' => 'NOVEMBRE',
             '12' => 'DÉCEMBRE',
         ];
-        
-        return $monthNames[$rowExploded[0]];
 
+        return $monthNames[$rowExploded[0]];
     }
 }

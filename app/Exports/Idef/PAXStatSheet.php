@@ -90,7 +90,7 @@ class PAXStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvents
         $sig1 = array_fill(0, $cols, '');
         $sig1[$cols - 4] = 'LE CHEF DE BUREAU IDEF';
         $data[] = $sig1;
-        
+
         $sig2 = array_fill(0, $cols, '');
         $sig2[$cols - 4] = 'BANZE LUKUNGAY';
         $data[] = $sig2;
@@ -204,7 +204,7 @@ class PAXStatSheet implements FromArray, ShouldAutoSize, WithTitle, WithEvents
                     $allRowDatas = $this->rows[$rowIndex];
                     foreach ($allRowDatas as $key => $value) {
                         if (!in_array($key, $this->getCommercialOperators($this->operators))) continue; // On ne traite que les clés correspondant aux opérateurs
-        
+
                         $rowData[$key] = $value;
                     }
                     // Pour chaque opérateur

@@ -24,7 +24,7 @@ class VTATrafficReportExport implements WithMultipleSheets
         return [
             new VTATrafficReportSheet(
                 'TRAFIC NAT',
-                "STATISTIQUES MENSUELLES DU TRAFIC NATIONAL — {$period}",
+                "EVOLUTION MENSUELLE DU TRAFIC NATIONAL — {$period}",
                 $this->domesticData['pax'],
                 $this->domesticData['fret'],
                 $this->domesticData['excedents'],
@@ -35,7 +35,7 @@ class VTATrafficReportExport implements WithMultipleSheets
             ),
             new VTATrafficReportSheet(
                 'TRAFIC INT',
-                "STATISTIQUES MENSUELLES DU TRAFIC INTERNATIONAL — {$period}",
+                "EVOLUTION MENSUELLE DU TRAFIC  INTERNATIONAL — {$period}",
                 $this->internationalData['pax'],
                 $this->internationalData['fret_depart'],
                 $this->internationalData['exced_depart'],

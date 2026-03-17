@@ -85,17 +85,21 @@ class VTATrafficReportSheet implements WithTitle, ShouldAutoSize, FromArray, Wit
     // ─────────────────────────────────────────────────────────────────────────
     public function array(): array
     {
-        $cols = $this->isInternational ? 12 : 8;
+        $cols = $this->isInternational ? 12 : 7;
         $data = [];
 
         // Document header (rows 1-4)
-        foreach ([
-            ['SERVICE VTA'],
-            ["RVA AERO/N'DJILI"],
-            ['DIVISION COMMERCIALE'],
-        ] as $line) {
+        foreach (
+            [
+                ['SERVICE VTA'],
+                ["RVA AERO/N'DJILI"],
+                ['DIVISION COMMERCIALE'],
+            ] as $line
+        ) {
             $data[] = array_pad($line, $cols, '');
         }
+
+        $data[] = array_fill(0, $cols, '');
 
         // Title row (row 5 - merged in AfterSheet)
         $data[] = array_pad([$this->title], $cols, '');
@@ -104,29 +108,43 @@ class VTATrafficReportSheet implements WithTitle, ShouldAutoSize, FromArray, Wit
         if ($this->isInternational) {
             $data[] = [
                 $this->isAnnual ? 'MOIS' : 'DATE',
-                'PAX', '', '',
-                'FRET DÉPART', '',
-                'FRET ARRIVÉE', '',
-                'EXCÉD. DÉPART', '',
-                'EXCÉD. ARRIVÉE', '',
+                'PAX',
+                '',
+                '',
+                'FRET DÉPART',
+                '',
+                'FRET ARRIVÉE',
+                '',
+                'EXCÉD. DÉPART',
+                '',
+                'EXCÉD. ARRIVÉE',
+                '',
             ];
             $data[] = [
                 '',
-                'Trafic', 'Go-Pass', 'PAX Bus',
-                'Trafic', 'IDEF',
-                'Trafic', 'IDEF',
-                'Trafic', 'IDEF',
-                'Trafic', 'IDEF',
+                'Trafic',
+                'Go-Pass',
+                'PAX Bus',
+                'Trafic',
+                'IDEF',
+                'Trafic',
+                'IDEF',
+                'Trafic',
+                'IDEF',
+                'Trafic',
+                'IDEF',
             ];
         } else {
             $data[] = [
                 $this->isAnnual ? 'MOIS' : 'DATE',
-                'PAX', '',
-                'FRET', '',
-                'EXCÉDENTS', '',
-                'TOTAL PAX',
+                'PAX',
+                '',
+                'FRET',
+                '',
+                'EXCÉDENTS',
+                '',
             ];
-            $data[] = ['', 'Trafic', 'Go-Pass', 'Trafic', 'IDEF', 'Trafic', 'IDEF', ''];
+            $data[] = ['', 'Trafic', 'Go-Pass', 'Trafic', 'IDEF', 'Trafic', 'IDEF'];
         }
 
         // Data rows — only raw brut values, computed cols empty
@@ -136,7 +154,23 @@ class VTATrafficReportSheet implements WithTitle, ShouldAutoSize, FromArray, Wit
             $fretRow  = $this->fret[$i]  ?? [];
             $excedRow = $this->excedents[$i] ?? [];
 
-            $label = $paxRow['DATE'] ?? $paxRow['MOIS'] ?? '';
+            // === 12 LIGNES MOIS ===
+            $monthNames = [
+                'JANVIER',
+                'FÉVRIER',
+                'MARS',
+                'AVRIL',
+                'MAI',
+                'JUIN',
+                'JUILLET',
+                'AOÛT',
+                'SEPTEMBRE',
+                'OCTOBRE',
+                'NOVEMBRE',
+                'DÉCEMBRE',
+            ];
+
+            $label = $this->isAnnual ? $monthNames[$i] : $paxRow['DATE'] ?? '';
 
             if ($this->isInternational) {
                 $fretArrRow  = $this->fretArrivee[$i]  ?? [];
@@ -164,21 +198,20 @@ class VTATrafficReportSheet implements WithTitle, ShouldAutoSize, FromArray, Wit
                     (int) ($fretRow['idef']    ?? 0),
                     (int) ($excedRow['traffic'] ?? 0),
                     (int) ($excedRow['idef']    ?? 0),
-                    '', // TOTAL PAX = formula
                 ];
             }
         }
 
         // Total row
-        $data[] = array_pad(['TOTAL'], $cols, '');
+        $data[] = array_pad(['TOTAUX'], $cols, '');
 
         // Signature
         $data[] = array_fill(0, $cols, '');
         $sig1 = array_fill(0, $cols, '');
-        $sig1[$cols - 3] = 'LE CHEF DE SERVICE VTA';
+        $sig1[$cols - 4] = 'LE CHEF DE SERVICE VTA';
         $data[] = $sig1;
         $sig2 = array_fill(0, $cols, '');
-        $sig2[$cols - 3] = 'MINSAY NKASER SAGESSE';
+        $sig2[$cols - 4] = 'MINSAY NKASER SAGESSE';
         $data[] = $sig2;
 
         return $data;
@@ -210,7 +243,7 @@ class VTATrafficReportSheet implements WithTitle, ShouldAutoSize, FromArray, Wit
                 $totalsRow    = $lastDataRow + 1;
 
                 // ── Document header rows 1-4 ──────────────────────────────
-                for ($r = 1; $r <= 4; $r++) {
+                for ($r = 1; $r <= 3; $r++) {
                     $s->mergeCells("A{$r}:{$highestCol}{$r}");
                     $s->getStyle("A{$r}")->getFont()->setBold(false)->setSize(11);
                     $s->getStyle("A{$r}")->getAlignment()
@@ -252,7 +285,6 @@ class VTATrafficReportSheet implements WithTitle, ShouldAutoSize, FromArray, Wit
                     $s->mergeCells("B{$headerRow1}:C{$headerRow1}"); // PAX
                     $s->mergeCells("D{$headerRow1}:E{$headerRow1}"); // FRET
                     $s->mergeCells("F{$headerRow1}:G{$headerRow1}"); // EXCÉDENTS
-                    $s->mergeCells("H{$headerRow1}:H{$headerRow2}"); // TOTAL PAX
                 }
 
                 // ── Sub-header row 7 ──────────────────────────────────────
@@ -289,28 +321,29 @@ class VTATrafficReportSheet implements WithTitle, ShouldAutoSize, FromArray, Wit
                     for ($col = 2; $col <= $highestColIndex; $col++) {
                         $cl    = Coordinate::stringFromColumnIndex($col);
                         $value = $s->getCell("{$cl}{$row}")->getValue();
-                        if ($value !== '' && $value !== null) {
+                        if ($value === 0 | $value === null) {
                             $s->setCellValueExplicit("{$cl}{$row}", (int) $value, DataType::TYPE_NUMERIC);
                         }
                         $s->getStyle("{$cl}{$row}")->getAlignment()
                             ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
                         $s->getStyle("{$cl}{$row}")->getNumberFormat()->setFormatCode('#,##0');
                     }
-
-                    // TOTAL PAX formula (domestic only): =B+C
-                    if (!$this->isInternational) {
-                        $s->getCell("H{$row}")->setValue("=B{$row}+C{$row}");
-                    }
                 }
 
                 // ── SUM formulas on TOTAL row ──────────────────────────────
                 for ($col = 2; $col <= $highestColIndex; $col++) {
-                    $cl = Coordinate::stringFromColumnIndex($col);
-                    $s->getCell("{$cl}{$totalsRow}")
-                      ->setValue("=SUM({$cl}{$firstDataRow}:{$cl}{$lastDataRow})");
-                    $s->getStyle("{$cl}{$totalsRow}")->getAlignment()
+                    $columnLetter = Coordinate::stringFromColumnIndex($col);
+                    $formulaRange = "{$columnLetter}{$firstDataRow}:{$columnLetter}{$lastDataRow}";
+
+                    // Set the SUM formula
+                    $s->getCell("{$columnLetter}{$totalsRow}")
+                        ->setValue("=SUM({$formulaRange})");
+
+                    // Format alignment and number format
+                    $s->getStyle("{$columnLetter}{$totalsRow}")->getAlignment()
                         ->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-                    $s->getStyle("{$cl}{$totalsRow}")->getNumberFormat()->setFormatCode('#,##0');
+                    $s->getStyle("{$columnLetter}{$totalsRow}")->getNumberFormat()
+                        ->setFormatCode('#,##0');
                 }
 
                 // ── TOTAL row style ────────────────────────────────────────
@@ -324,7 +357,7 @@ class VTATrafficReportSheet implements WithTitle, ShouldAutoSize, FromArray, Wit
                 // ── Signature ─────────────────────────────────────────────
                 $sigRow1  = $highestRow - 1;
                 $sigRow2  = $highestRow;
-                $sigStart = Coordinate::stringFromColumnIndex($highestColIndex - 2);
+                $sigStart = Coordinate::stringFromColumnIndex($highestColIndex - 3);
                 $sigEnd   = Coordinate::stringFromColumnIndex($highestColIndex);
 
                 $s->mergeCells("{$sigStart}{$sigRow1}:{$sigEnd}{$sigRow1}");

@@ -53,13 +53,15 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
         $data = [];
 
         // TITRES
-        foreach ([
-            ["SERVICE VTA"],
-            ["BUREAU PAX BUS"],
-            ["RVA AERO/N'DJILI"],
-            [""],
-            [$this->title]
-        ] as $line) {
+        foreach (
+            [
+                ["SERVICE VTA"],
+                ["BUREAU PAX BUS"],
+                ["RVA AERO/N'DJILI"],
+                [""],
+                [$this->title]
+            ] as $line
+        ) {
             $data[] = array_pad($line, $cols, "");
         }
 
@@ -69,15 +71,15 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
         // ✅ LIGNES DE DONNÉES avec valeurs réelles
         foreach ($this->rows['pax'] as $row) {
             $dataRow = [$row['date'] ?? ''];
-            
+
             // Ajouter les valeurs pour chaque opérateur
             foreach ($this->operators as $op) {
                 $dataRow[] = $row[$op] ?? 0;
             }
-            
+
             // Colonne TOTAL (sera calculée par formule Excel)
             $dataRow[] = '';
-            
+
             $data[] = $dataRow;
         }
 
@@ -126,7 +128,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // ✅ CALCUL DES INDICES CORRECTS
                 $highestCol = $s->getHighestColumn();
                 $highestColIndex = Coordinate::columnIndexFromString($highestCol);
-                
+
                 $headerRow = 6;
                 $firstDataRow = $headerRow + 1;
                 $lastDataRow = 6 + count($this->rows['pax']);
@@ -139,14 +141,14 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // ═══════════════════════════════════════════════════════════
                 // STYLE DES TITRES (Lignes 1-5)
                 // ═══════════════════════════════════════════════════════════
-                
+
                 // Lignes 1-3 : Alignées à gauche
                 for ($row = 1; $row <= 3; $row++) {
                     $s->mergeCells("A{$row}:{$highestCol}{$row}");
                     $s->getStyle("A{$row}")->getFont()->setBold(false)->setSize(10);
                     $s->getStyle("A{$row}")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_LEFT)
-                    ->setVertical(Alignment::VERTICAL_CENTER);
+                        ->setHorizontal(Alignment::HORIZONTAL_LEFT)
+                        ->setVertical(Alignment::VERTICAL_CENTER);
                 }
                 // Ligne 5 : TITRE PRINCIPAL (CENTRÉ)
                 $s->mergeCells("A5:{$highestCol}5");
@@ -161,7 +163,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // ═══════════════════════════════════════════════════════════
                 // STYLE EN-TÊTES (Ligne 6)
                 // ═══════════════════════════════════════════════════════════
-                
+
                 $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
                     ->getFont()->setBold(true)->setSize(11);
                 $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
@@ -177,7 +179,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // ═══════════════════════════════════════════════════════════
                 // BORDURES DU TABLEAU
                 // ═══════════════════════════════════════════════════════════
-                
+
                 $s->getStyle("A{$headerRow}:{$highestCol}{$totalsRow}")
                     ->getBorders()->getAllBorders()
                     ->setBorderStyle(Border::BORDER_THIN);
@@ -185,7 +187,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // ═══════════════════════════════════════════════════════════
                 // ALTERNANCE DE COULEURS POUR LES LIGNES DE DONNÉES
                 // ═══════════════════════════════════════════════════════════
-                
+
                 for ($row = $firstDataRow; $row <= $lastDataRow; $row++) {
                     $rowIndex = $row - $firstDataRow;
                     if ($rowIndex % 2 === 0) {
@@ -198,7 +200,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // ═══════════════════════════════════════════════════════════
                 // ALIGNEMENT ET FORMAT DES NOMBRES
                 // ═══════════════════════════════════════════════════════════
-                
+
                 // Colonne DATE : alignée à gauche
                 $s->getStyle("A{$firstDataRow}:A{$totalsRow}")
                     ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
@@ -207,23 +209,23 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 $rowIndex = 0;
                 for ($row = $firstDataRow; $row <= $lastDataRow; $row++) {
                     $rowData = $this->rows['pax'][$rowIndex] ?? [];
-                    
+
                     // Pour chaque opérateur
                     $colIndex = 2; // Commence à la colonne B (après DATE)
                     foreach ($this->operators as $op) {
                         $colLetter = Coordinate::stringFromColumnIndex($colIndex);
                         $value = $rowData[$op] ?? 0;
-                        
+
                         // Utiliser setCellValueExplicit pour forcer l'affichage des 0
                         $s->setCellValueExplicit(
                             "{$colLetter}{$row}",
                             (int)$value,
                             DataType::TYPE_NUMERIC
                         );
-                        
+
                         $colIndex++;
                     }
-                    
+
                     $rowIndex++;
                 }
 
@@ -240,15 +242,15 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // ═══════════════════════════════════════════════════════════
                 // ✅ FORMULES EXCEL POUR LES TOTAUX
                 // ═══════════════════════════════════════════════════════════
-                
+
                 // Colonne TOTAL pour chaque ligne de données (somme horizontale)
                 $totalColLetter = Coordinate::stringFromColumnIndex($totalColIndex);
                 $firstDataColLetter = Coordinate::stringFromColumnIndex(2);
                 $lastDataColLetter = Coordinate::stringFromColumnIndex($lastDataColIndex);
-                
+
                 for ($row = $firstDataRow; $row <= $lastDataRow; $row++) {
                     $s->setCellValue(
-                        "{$totalColLetter}{$row}", 
+                        "{$totalColLetter}{$row}",
                         "=SUM({$firstDataColLetter}{$row}:{$lastDataColLetter}{$row})"
                     );
                 }
@@ -257,7 +259,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 for ($col = 2; $col <= $totalColIndex; $col++) {
                     $colLetter = Coordinate::stringFromColumnIndex($col);
                     $s->setCellValue(
-                        "{$colLetter}{$totalsRow}", 
+                        "{$colLetter}{$totalsRow}",
                         "=SUM({$colLetter}{$firstDataRow}:{$colLetter}{$lastDataRow})"
                     );
                 }
@@ -265,7 +267,7 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // ═══════════════════════════════════════════════════════════
                 // STYLE LIGNE TOTAUX
                 // ═══════════════════════════════════════════════════════════
-                
+
                 $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
                     ->getFont()->setBold(true)->setSize(12);
                 $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
@@ -278,14 +280,14 @@ class PaxbusInternationalStatSheet implements FromArray, ShouldAutoSize, WithTit
                 // ═══════════════════════════════════════════════════════════
                 // HAUTEUR DES LIGNES
                 // ═══════════════════════════════════════════════════════════
-                
+
                 $s->getRowDimension($headerRow)->setRowHeight(20);
                 $s->getRowDimension($totalsRow)->setRowHeight(18);
 
                 // ═══════════════════════════════════════════════════════════
                 // ✅ SIGNATURE (2 colonnes depuis la droite, fusionnées)
                 // ═══════════════════════════════════════════════════════════
-                
+
                 $signatureRow1 = $totalsRow + 2;
                 $signatureRow2 = $signatureRow1 + 1;
 

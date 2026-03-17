@@ -225,7 +225,7 @@ class PaxbusYearlyDomesticFlightsStatSheet implements FromArray, ShouldAutoSize,
                     $colIndex = 2; // Commence à la colonne B (après DATE)
                     foreach ($this->operators as $op) {
                         $colLetter = Coordinate::stringFromColumnIndex($colIndex);
-                        
+
                         // Calculer la somme des vols pour cet opérateur (comme dans array())
                         $flightsCount = 0;
                         foreach ($rowData[$op] ?? [] as $opAircrafts) {

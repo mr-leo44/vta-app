@@ -37,14 +37,16 @@ class PaxbusWeeklyDomesticSheet implements FromArray, ShouldAutoSize, WithEvents
         $arrayData = [];
 
         // TITRES
-        foreach ([
-            ['SERVICE VTA'],
-            ['BUREAU PAX BUS'],
-            ["RVA AERO/N'DJILI"],
-            [''],
-            [$this->title],
-            [$this->subTitle],
-        ] as $line) {
+        foreach (
+            [
+                ['SERVICE VTA'],
+                ['BUREAU PAX BUS'],
+                ["RVA AERO/N'DJILI"],
+                [''],
+                [$this->title],
+                [$this->subTitle],
+            ] as $line
+        ) {
             $arrayData[] = array_pad($line, $cols, '');
         }
 

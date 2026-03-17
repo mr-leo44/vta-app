@@ -13,95 +13,117 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
+/**
+ * Feuille de synthèse mensuelle (ANNEXE XI).
+ *
+ * Colonnes :
+ *   A  LIBELLE
+ *   B  PAX/FRET TOTAL (a)         ← brut
+ *   C  TOTAL GO-PASS/FRET IDEF    ← brut
+ *   D  TOTAL EXONERE (a-b)        = B - C   ← formule Excel
+ *
+ * Lignes de données (9 à 15) :
+ *   9   1. VOLS NATIONAUX (titre fusionné)
+ *   10  a. PAX EMBARQUES
+ *   11  b. FRET EMBARQUE
+ *   12  2. VOLS INTERNATIONAUX (titre fusionné)
+ *   13  a. PAX EMBARQUES
+ *   14  b. FRET EMBARQUE
+ *   15  c. FRET DEBARQUE
+ *
+ * La colonne D est entièrement calculée par Excel (=B-C).
+ * Les valeurs B et C sont des données brutes issues du PHP.
+ */
 class SynthStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
 {
-    protected $sheetTitle;
-    protected $title;
-    protected $domesticRows;
-    protected $internationalRows;
-    protected $annexNumber;
+    protected string $sheetTitle;
+    protected string $title;
+    protected array  $domesticRows;
+    protected array  $internationalRows;
+    protected string $annexNumber;
 
-    public function __construct(string $sheetTitle, string $title, array $domesticRows, array $internationalRows, string $annexNumber)
-    {
-        $this->sheetTitle = $sheetTitle;
-        $this->title = $title;
-        $this->domesticRows = $domesticRows;
+    public function __construct(
+        string $sheetTitle,
+        string $title,
+        array  $domesticRows,
+        array  $internationalRows,
+        string $annexNumber
+    ) {
+        $this->sheetTitle        = $sheetTitle;
+        $this->title             = $title;
+        $this->domesticRows      = $domesticRows;
         $this->internationalRows = $internationalRows;
-        $this->annexNumber = $annexNumber;
+        $this->annexNumber       = $annexNumber;
     }
 
     public function title(): string
     {
-        return substr($this->sheetTitle, 0, 31); //$this->sheetTitle;
+        return substr($this->sheetTitle, 0, 31);
     }
 
     public function array(): array
     {
-        $cols = 4; // DATE or MOIS + 3 domestic + 1 international + TOTAL
+        $cols = 4;
         $data = [];
 
-        // TITRES
-        foreach (
-            [
-                ['SERVICE VTA'],
-                ['BUREAU IDEF'],
-                ["RVA AERO/N'DJILI"],
-                ["DIVISION COMMERCIALE"],
-                ['', 'ANNEXE XI'],
-                [$this->title],
-            ] as $line
-        ) {
+        foreach ([
+            ['SERVICE VTA'],
+            ['BUREAU IDEF'],
+            ["RVA AERO/N'DJILI"],
+            ["DIVISION COMMERCIALE"],
+            ['', 'ANNEXE XI'],
+            [$this->title],
+        ] as $line) {
             $data[] = array_pad($line, $cols, '');
         }
 
-        // EN-TÊTES LIGNE 1 
-        $header1 = ['LIBELLE', 'PAX /FRET TOTAL (a)', 'TOTAL GO-PASS/FRET IDEF ', 'TOTAL (PAX /FRET)'];
-        $data[] = $header1;
-        // EN-TÊTES LIGNE 2 (sous-colonnes)
-        $header2 = ['', '', 'FACTURE (b)', 'EXONERE(a-b)'];
-        $data[] = $header2;
-        // EN-TÊTES LIGNE 3 (sous-colonnes)
-        $header3 = ['1. VOLS NATIONAUX', '', '', ''];
-        $data[] = $header3;
+        // En-têtes (2 lignes, fusionnées dans AfterSheet)
+        $data[] = ['LIBELLE', 'PAX /FRET TOTAL (a)', 'TOTAL GO-PASS/FRET IDEF ', 'TOTAL (PAX /FRET)'];
+        $data[] = ['', '', 'FACTURE (b)', 'EXONERE(a-b)'];
 
-        // DONNÉES PAX NATIONAUX
-        $domesticPaxRow = $this->getPaxAndGopassDatas($this->domesticRows['pax'] ?? []);
-        $data[] = $domesticPaxRow;
+        // Titre vols nationaux (ligne 9 — fusionnée dans AfterSheet)
+        $data[] = ['1. VOLS NATIONAUX', '', '', ''];
 
-        // DONNEES FRET NATIONAUX
-        $domesticFretDatas = $this->domesticRows['fret'] ?? [];
-        $domesticExcedentData = $this->domesticRows['exced'] ?? [];
-        $domesticFretRow = $this->getFretDatas($domesticFretDatas, $domesticExcedentData, 'b. FRET EMBARQUE');
-        $data[] = $domesticFretRow;
+        // PAX nationaux
+        [$domPaxTotal, $domPaxIdef] = $this->getPaxRawTotals($this->domesticRows['pax'] ?? []);
+        $data[] = ['a. PAX EMBARQUES', $domPaxTotal, $domPaxIdef, '']; // D ← formule
 
-        $header4 = ['2. VOLS INTERNATIONAUX', '', '', ''];
-        $data[] = $header4;
+        // FRET national
+        [$domFretTotal, $domFretIdef] = $this->getFretRawTotals(
+            $this->domesticRows['fret']  ?? [],
+            $this->domesticRows['exced'] ?? []
+        );
+        $data[] = ['b. FRET EMBARQUE', $domFretTotal, $domFretIdef, '']; // D ← formule
 
-        // DONNÉES PAX INTERNATIONAUX
-        $internationalPaxRow = $this->getPaxAndGopassDatas($this->internationalRows['pax'] ?? []);
-        $data[] = $internationalPaxRow;
+        // Titre vols internationaux (ligne 12 — fusionnée dans AfterSheet)
+        $data[] = ['2. VOLS INTERNATIONAUX', '', '', ''];
 
-        // DONNEES FRET INTERNATIONAUX
-        $internationalDepartureFretDatas = $this->getFormattedFretOrExcedentdatas($this->internationalRows['fret'])['departure'] ?? [];
-        $internationalDepartureExcedentDatas = $this->getFormattedFretOrExcedentdatas($this->internationalRows['exced'])['departure'] ?? [];
-        $internationalArrivalFretDatas = $this->getFormattedFretOrExcedentdatas($this->internationalRows['fret'])['arrival'] ?? [];
-        $internationalArrivalExcedentDatas = $this->getFormattedFretOrExcedentdatas($this->internationalRows['exced'])['arrival'] ?? [];
-        $internationalDepartureRow = $this->getFretDatas($internationalDepartureFretDatas, $internationalDepartureExcedentDatas, 'b. FRET EMBARQUE');
-        $internationalArrivalRow = $this->getFretDatas($internationalArrivalFretDatas, $internationalArrivalExcedentDatas, 'c. FRET DEBARQUE');
-        $data[] = $internationalDepartureRow;
-        $data[] = $internationalArrivalRow;
+        // PAX internationaux
+        [$intPaxTotal, $intPaxIdef] = $this->getPaxRawTotals($this->internationalRows['pax'] ?? []);
+        $data[] = ['a. PAX EMBARQUES', $intPaxTotal, $intPaxIdef, '']; // D ← formule
 
-        // LIGNES VIDES AVANT SIGNATURE
+        // FRET international EMBARQUE
+        $intDepFret  = $this->getFormattedFretOrExcedentdatas($this->internationalRows['fret']  ?? [])['departure'];
+        $intDepExced = $this->getFormattedFretOrExcedentdatas($this->internationalRows['exced'] ?? [])['departure'];
+        [$intDepTotal, $intDepIdef] = $this->getFretRawTotals($intDepFret, $intDepExced);
+        $data[] = ['b. FRET EMBARQUE', $intDepTotal, $intDepIdef, '']; // D ← formule
+
+        // FRET international DEBARQUE
+        $intArrFret  = $this->getFormattedFretOrExcedentdatas($this->internationalRows['fret']  ?? [])['arrival'];
+        $intArrExced = $this->getFormattedFretOrExcedentdatas($this->internationalRows['exced'] ?? [])['arrival'];
+        [$intArrTotal, $intArrIdef] = $this->getFretRawTotals($intArrFret, $intArrExced);
+        $data[] = ['c. FRET DEBARQUE', $intArrTotal, $intArrIdef, '']; // D ← formule
+
         $data[] = array_fill(0, $cols, '');
 
-        // SIGNATURE
-        $sig1 = array_fill(0, $cols, '');
+        $sig1            = array_fill(0, $cols, '');
         $sig1[$cols - 2] = 'LE CHEF DE BUREAU IDEF';
-        $data[] = $sig1;
+        $data[]          = $sig1;
 
-        $sig2 = array_fill(0, $cols, '');
+        $sig2            = array_fill(0, $cols, '');
         $sig2[$cols - 2] = 'BANZE LUKUNGAY';
-        $data[] = $sig2;
+        $data[]          = $sig2;
+
         return $data;
     }
 
@@ -111,194 +133,138 @@ class SynthStatSheet implements WithTitle, ShouldAutoSize, FromArray, WithEvents
             AfterSheet::class => function (AfterSheet $event) {
                 $s = $event->sheet->getDelegate();
 
-                // ORIENTATION + FIT TO PAGE
                 $s->getPageSetup()
                     ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
-                    ->setFitToPage(true)
-                    ->setFitToWidth(1)
-                    ->setFitToHeight(0)
+                    ->setFitToPage(true)->setFitToWidth(1)->setFitToHeight(0)
                     ->setHorizontalCentered(true);
+                $s->getPageMargins()->setTop(0.25)->setBottom(0.25)->setLeft(0.25)->setRight(0.25);
 
-                // MARGES
-                $s->getPageMargins()->setTop(0.25);
-                $s->getPageMargins()->setBottom(0.25);
-                $s->getPageMargins()->setLeft(0.25);
-                $s->getPageMargins()->setRight(0.25);
-
-                // DIMENSIONS
-                $highestRow = $s->getHighestRow();
-                $highestCol = $s->getHighestColumn();
+                $highestRow      = $s->getHighestRow();
+                $highestCol      = $s->getHighestColumn();
                 $highestColIndex = Coordinate::columnIndexFromString($highestCol);
+                $lastDataRow     = $highestRow - 3;
 
-                // Lignes 1-4 : Alignées à gauche
+                // Lignes de données réelles (hors titres fusionnés)
+                // Rows 10, 11, 13, 14, 15
+                $dataRows = [10, 11, 13, 14, 15];
+
+                // ── Formule D = B - C pour chaque ligne de données ────────
+                foreach ($dataRows as $row) {
+                    $s->getCell("D{$row}")->setValue("=B{$row}-C{$row}");
+                    $s->setCellValueExplicit("B{$row}", $s->getCell("B{$row}")->getValue(), DataType::TYPE_NUMERIC);
+                    $s->setCellValueExplicit("C{$row}", $s->getCell("C{$row}")->getValue(), DataType::TYPE_NUMERIC);
+                }
+
+                // ── Styles titres ─────────────────────────────────────────
                 for ($row = 1; $row <= 4; $row++) {
                     $s->mergeCells("A{$row}:{$highestCol}{$row}");
                     $s->getStyle("A{$row}")->getFont()->setBold(false)->setSize(12);
                     $s->getStyle("A{$row}")->getAlignment()
-                        ->setHorizontal(Alignment::HORIZONTAL_LEFT)
-                        ->setVertical(Alignment::VERTICAL_CENTER);
+                        ->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
                 }
-
                 $s->getStyle("B5")->getFont()->setBold(false)->setSize(14);
-                // Ligne 5 : TITRE PRINCIPAL (CENTRÉ)
+
                 $s->mergeCells("A6:{$highestCol}6");
                 $s->getStyle("A6")->getFont()->setBold(true)->setSize(16);
                 $s->getStyle("A6")->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER) // ✅ Centré
-                    ->setVertical(Alignment::VERTICAL_CENTER);
-                $s->getStyle("A6")
-                    ->getFill()->setFillType('solid')
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+                $s->getStyle("A6")->getFill()->setFillType('solid')
                     ->getStartColor()->setARGB('FFD9E1F2');
-                // LIGNES DE DONNÉES
-                $headerRow = 7; // La ligne où commencent les en-têtes de colonnes (LIBELLE, PAX/FRET TOTAL, etc.)
-                $lastDataRow = $highestRow - 3;
 
-                // STYLE EN-TÊTES
+                $headerRow = 7;
                 $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
                     ->getFont()->setBold(true)->setSize(13);
                 $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
-                    ->getFill()->setFillType('solid')
-                    ->getStartColor()->setARGB('FF4472C4');
+                    ->getFill()->setFillType('solid')->getStartColor()->setARGB('FF4472C4');
                 $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
                     ->getFont()->getColor()->setARGB('FFFFFFFF');
                 $s->getStyle("A{$headerRow}:{$highestCol}{$headerRow}")
-                    ->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                    ->setVertical(Alignment::VERTICAL_CENTER);
+                    ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
 
-                // BORDURES
                 $s->getStyle("A{$headerRow}:{$highestCol}{$lastDataRow}")
-                    ->getBorders()->getAllBorders()
-                    ->setBorderStyle(Border::BORDER_THIN);
+                    ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
 
-                $s->getStyle("C8:{$highestCol}8")
-                    ->getFont()->setSize(14);
-
-                // STYLE DES LIGNES DE DONNÉES
-                $s->getStyle("A9:{$highestCol}15")
-                    ->getFont()->setSize(14);
+                // ── Fusions titres de section ─────────────────────────────
                 $s->mergeCells("A9:{$highestCol}9");
                 $s->mergeCells("A12:{$highestCol}12");
-
                 $s->getStyle("A9")->getFont()->setBold(true);
                 $s->getStyle("A12")->getFont()->setBold(true);
-                $s->getStyle("{$highestCol}10:{$highestCol}15")->getFont()->setBold(true);
+
+                // ── Style données ─────────────────────────────────────────
+                $s->getStyle("A9:{$highestCol}15")->getFont()->setSize(14);
                 $s->getStyle("B10:{$highestCol}15")->getNumberFormat()->setFormatCode('#,##0');
+                $s->getStyle("{$highestCol}10:{$highestCol}15")->getFont()->setBold(true);
 
-                for ($row = 10; $row <= 15; $row++) {
-                    $s->setCellValueExplicit("{$highestCol}{$row}", $s->getCell("{$highestCol}{$row}")->getValue(), DataType::TYPE_NUMERIC);
-                }
-
-                // Hauteur des lignes
                 $s->getRowDimension($headerRow)->setRowHeight(25);
-
                 for ($row = 8; $row <= $lastDataRow; $row++) {
                     $s->getRowDimension($row)->setRowHeight(20);
                 }
 
-                // ✅ 2 & 3. SIGNATURE : 2 colonnes depuis la droite, fusionnées et centrées
-                $signatureRow1 = $lastDataRow + 2;
-                $signatureRow2 = $signatureRow1 + 1;
+                // ── Signature ─────────────────────────────────────────────
+                $sigRow1  = $lastDataRow + 2;
+                $sigRow2  = $sigRow1 + 1;
+                $sigEnd   = Coordinate::stringFromColumnIndex($highestColIndex);
 
-                // ✅ 2 colonnes à partir de la droite
-                $signatureEndCol = Coordinate::stringFromColumnIndex($highestColIndex);
-
-                // Ligne 1 : LE CHEF DE BUREAU IDEF
-                $s->mergeCells("C{$signatureRow1}:{$signatureEndCol}{$signatureRow1}");
-                $s->getStyle("C{$signatureRow1}")
-                    ->getFont()->setBold(true)->setSize(11);
-                $s->getStyle("C{$signatureRow1}")
-                    ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-
-                // Ligne 2 : BANZE LUKUNGAY
-                $s->mergeCells("C{$signatureRow2}:{$signatureEndCol}{$signatureRow2}");
-                $s->getStyle("C{$signatureRow2}")
-                    ->getFont()->setBold(true)->setSize(12);
-                $s->getStyle("C{$signatureRow2}")
-                    ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
-            }
+                $s->mergeCells("C{$sigRow1}:{$sigEnd}{$sigRow1}");
+                $s->getStyle("C{$sigRow1}")->getFont()->setBold(true)->setSize(11);
+                $s->getStyle("C{$sigRow1}")->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+                $s->mergeCells("C{$sigRow2}:{$sigEnd}{$sigRow2}");
+                $s->getStyle("C{$sigRow2}")->getFont()->setBold(true)->setSize(12);
+                $s->getStyle("C{$sigRow2}")->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+            },
         ];
     }
 
-    private function getPaxAndGopassDatas($paxDatas): array
+    // ─── Helpers : retournent [total_trafic, total_idef] ─────────────────────
+
+    private function getPaxRawTotals(array $paxDatas): array
     {
-        $datas = $paxDatas ?? [];
         $trafficPax = 0;
-        $idefPax = 0;
-        foreach ($datas as $dayValues) {
-            array_shift($dayValues); // Remove 'DATE' or 'MOIS' key
-            foreach ($dayValues as $value) {
-                $trafficPax += (int)$value['trafic'];
-                $idefPax += (int)$value['gopass'];
+        $idefPax    = 0;
+        foreach ($paxDatas as $dayValues) {
+            $copy = $dayValues;
+            array_shift($copy);
+            foreach ($copy as $value) {
+                $trafficPax += (int) $value['trafic'];
+                $idefPax    += (int) $value['gopass'];
             }
         }
-        return [
-            'a. PAX EMBARQUES',
-            $trafficPax,
-            $idefPax,
-            $trafficPax - $idefPax
-        ];
+        return [$trafficPax, $idefPax];
     }
 
-    private function getFormattedFretOrExcedentdatas($dataRows): array
-    {
-        $departureDatas = [];
-        $arrivalDatas = [];
-        foreach ($dataRows as $rows) {
-            $daylyDepartureArray = [];
-            $daylyArrivalArray = [];
-            foreach ($rows as $key => $value) {
-                $date = isset($rows['DATE']) ? ['DATE' => $rows['DATE']] : ['MOIS' => $rows['MOIS']];
-                if ($key === 'DATE' || $key === 'MOIS') continue;
-                if (isset($value['departure'])) {
-                    $daylyDepartureArray[$key] = $value['departure'];
-                }
-                if (isset($value['arrival'])) {
-                    $daylyArrivalArray[$key] = $value['arrival'];
-                }
-            }
-            $departureDatas[] = array_merge($date, $daylyDepartureArray);
-            $arrivalDatas[] = array_merge($date, $daylyArrivalArray);
-        }
-
-        return [
-            'departure' => $departureDatas,
-            'arrival' => $arrivalDatas
-        ];
-    }
-
-    private function getFretDatas($fretDatas, $excedentDatas, $libelle): array
+    private function getFretRawTotals(array $fretDatas, array $excedentDatas): array
     {
         $trafficFret = 0;
-        $idefFret = 0;
-        foreach ($fretDatas as $key => $dayValues) {
-            [$trafficFret, $idefFret] = $this->freightData($dayValues, $trafficFret, $idefFret);
-        }
-
-        foreach ($excedentDatas as $key => $dayValues) {
-            [$trafficFret, $idefFret] = $this->freightData($dayValues, $trafficFret, $idefFret);
-        }
-
-        return [
-            $libelle,
-            $trafficFret,
-            $idefFret,
-            $trafficFret - $idefFret
-        ];
-    }
-
-    private function freightData($dayValues, $trafficFret, $idefFret): array
-    {
-        array_shift($dayValues); // Remove 'DATE' or 'MOIS' key
-        foreach ($dayValues as $key => $value) {
-            if ($key === 'UN') {
-                $trafficFret += (int)$value;
-            } else {
-                $trafficFret += (int)$value;
-                $idefFret += (int)$value;
+        $idefFret    = 0;
+        foreach (array_merge($fretDatas, $excedentDatas) as $dayValues) {
+            $copy = $dayValues;
+            array_shift($copy);
+            foreach ($copy as $key => $value) {
+                $trafficFret += (int) $value;
+                if ($key !== 'UN') $idefFret += (int) $value;
             }
         }
-
         return [$trafficFret, $idefFret];
+    }
+
+    private function getFormattedFretOrExcedentdatas(array $dataRows): array
+    {
+        $departureDatas = [];
+        $arrivalDatas   = [];
+        foreach ($dataRows as $rows) {
+            $date              = isset($rows['DATE']) ? ['DATE' => $rows['DATE']] : ['MOIS' => $rows['MOIS']];
+            $daylyDep          = [];
+            $daylyArr          = [];
+            foreach ($rows as $key => $value) {
+                if ($key === 'DATE' || $key === 'MOIS') continue;
+                if (isset($value['departure'])) $daylyDep[$key] = $value['departure'];
+                if (isset($value['arrival']))   $daylyArr[$key] = $value['arrival'];
+            }
+            $departureDatas[] = array_merge($date, $daylyDep);
+            $arrivalDatas[]   = array_merge($date, $daylyArr);
+        }
+        return ['departure' => $departureDatas, 'arrival' => $arrivalDatas];
     }
 }

@@ -13,25 +13,36 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
+/**
+ * Feuille mensuelle PAX BUS.
+ *
+ * Colonnes :
+ *   A  DATE
+ *   B  VOLS DOM ≥ 50T     ← brut
+ *   C  VOLS DOM < 50T     ← brut
+ *   D  TOTAL DOM          = B + C   ← formule Excel
+ *   E  PAX INTERNATIONAUX ← brut
+ *
+ * Ligne TOTAL :
+ *   B,C,D,E = SUM(...)    ← formules Excel
+ */
 class PaxbusSyntheticStatSheet implements FromArray, ShouldAutoSize, WithEvents, WithTitle
 {
-    protected $sheetTitle;
-    protected $title;
-    protected $domesticData;
-    protected $internationalData;
-    protected $daysInMonth;
+    protected string $sheetTitle;
+    protected string $title;
+    protected array  $domesticData;
+    protected array  $internationalData;
 
     public function __construct(
         string $sheetTitle,
         string $title,
-        array $domesticData,
-        array $internationalData
+        array  $domesticData,
+        array  $internationalData
     ) {
-        $this->sheetTitle = $sheetTitle;
-        $this->title = $title;
-        $this->domesticData = $domesticData;
+        $this->sheetTitle        = $sheetTitle;
+        $this->title             = $title;
+        $this->domesticData      = $domesticData;
         $this->internationalData = $internationalData;
-        $this->daysInMonth = count($domesticData['pax']);
     }
 
     public function title(): string
@@ -41,10 +52,9 @@ class PaxbusSyntheticStatSheet implements FromArray, ShouldAutoSize, WithEvents,
 
     public function array(): array
     {
-        $cols = 6; // DATE + 3 domestic + 1 international + TOTAL
+        $cols = 5;
         $data = [];
 
-        // TITRES
         foreach ([
             ['SERVICE VTA'],
             ['BUREAU PAX BUS'],
@@ -55,29 +65,21 @@ class PaxbusSyntheticStatSheet implements FromArray, ShouldAutoSize, WithEvents,
             $data[] = array_pad($line, $cols, '');
         }
 
-        // EN-TÊTES LIGNE 1 (avec merge)
-        $header1 = ['DATE', 'VOLS DOMESTIQUES', '', '', 'VOLS INTERNATIONAUX'];
-        $data[] = $header1;
+        // En-têtes (2 lignes, fusionnées dans AfterSheet)
+        $data[] = ['DATE', 'VOLS DOMESTIQUES', '', '', 'VOLS INTERNATIONAUX'];
+        $data[] = ['', '≥ 50 TONNES', '< 50 TONNES', 'TOTAL', 'PAX'];
 
-        // EN-TÊTES LIGNE 2 (sous-colonnes)
-        $header2 = ['', '≥ 50 TONNES', '< 50 TONNES', 'TOTAL', 'PAX'];
-        $data[] = $header2;
-
-        // DONNÉES PAR JOUR
+        // Données brutes par jour : B = heavy, C = light, D vide (formule), E = intl
         foreach ($this->domesticData['pax'] as $dayIndex => $domesticDayData) {
-            $date = $domesticDayData['date'] ?? '';
-            
-            // Compter les vols domestiques
+            $date       = $domesticDayData['date'] ?? '';
             $heavyCount = 0;
             $lightCount = 0;
-            
+
             foreach ($domesticDayData as $operatorSigle => $aircrafts) {
                 if ($operatorSigle === 'date') continue;
-                
                 foreach ($aircrafts as $aircraftData) {
-                    $pmad = $aircraftData['pmad'] ?? 0;
+                    $pmad  = $aircraftData['pmad']  ?? 0;
                     $count = $aircraftData['count'] ?? 0;
-                    
                     if ($pmad >= 50000) {
                         $heavyCount += $count;
                     } else {
@@ -85,48 +87,36 @@ class PaxbusSyntheticStatSheet implements FromArray, ShouldAutoSize, WithEvents,
                     }
                 }
             }
-            
-            $totalDomestic = $heavyCount + $lightCount;
-            
-            // Compter les pax internationaux
-            $internationalRow = $this->internationalData['pax'][$dayIndex] ?? [];
-            $totalPaxInternational = 0;
-            
-            foreach ($internationalRow as $key => $value) {
+
+            $intlRow = $this->internationalData['pax'][$dayIndex] ?? [];
+            $intlPax = 0;
+            foreach ($intlRow as $key => $value) {
                 if ($key === 'date') continue;
-                $totalPaxInternational += (int)$value;
+                $intlPax += (int) $value;
             }
-            
-            $row = [
-                $date,
-                (int)$heavyCount,
-                (int)$lightCount,
-                (int)$totalDomestic,
-                (int)$totalPaxInternational
+
+            $data[] = [
+                $date,         // A
+                $heavyCount,   // B ← brut
+                $lightCount,   // C ← brut
+                '',            // D ← formule B+C
+                $intlPax,      // E ← brut
             ];
-            
-            $data[] = $row;
         }
 
-        // LIGNE TOTAUX
-        $totRow = ['TOTAL', '', '', '', ''];
-        $data[] = $totRow;
-
-        // LIGNES VIDES AVANT SIGNATURE
+        $data[] = ['TOTAL', '', '', '', ''];
         $data[] = array_fill(0, $cols, '');
 
-        // SIGNATURE
-        $sig1 = array_fill(0, $cols, '');
+        $sig1            = array_fill(0, $cols, '');
         $sig1[$cols - 4] = 'LE CHEF DE BUREAU PAX BUS ai';
-        $data[] = $sig1;
+        $data[]          = $sig1;
 
-        $sig2 = array_fill(0, $cols, '');
+        $sig2            = array_fill(0, $cols, '');
         $sig2[$cols - 4] = 'FREDDY KALEMA TABU';
-        $data[] = $sig2;
-        // dd($data);
+        $data[]          = $sig2;
+
         return $data;
     }
-
 
     public function registerEvents(): array
     {
@@ -134,30 +124,20 @@ class PaxbusSyntheticStatSheet implements FromArray, ShouldAutoSize, WithEvents,
             AfterSheet::class => function (AfterSheet $event) {
                 $s = $event->sheet->getDelegate();
 
-                // PAGE
                 $s->getPageSetup()
                     ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
-                    ->setFitToPage(true)
-                    ->setFitToWidth(1)
-                    ->setFitToHeight(0)
+                    ->setFitToPage(true)->setFitToWidth(1)->setFitToHeight(0)
                     ->setHorizontalCentered(true);
+                $s->getPageMargins()->setTop(0.25)->setBottom(0.25)->setLeft(0.5)->setRight(0.5);
 
-                // MARGES
-                $s->getPageMargins()->setTop(0.25);
-                $s->getPageMargins()->setBottom(0.25);
-                $s->getPageMargins()->setLeft(0.5);
-                $s->getPageMargins()->setRight(0.5);
-
-                // CALCUL DES INDICES
-                $highestRow = $s->getHighestRow();
-                $highestCol = $s->getHighestColumn();
+                $highestRow      = $s->getHighestRow();
+                $highestCol      = $s->getHighestColumn();
                 $highestColIndex = Coordinate::columnIndexFromString($highestCol);
+                $headerRow1      = 6;
+                $headerRow2      = 7;
+                $firstDataRow    = 8;
 
-                $headerRow1 = 6;
-                $headerRow2 = 7;
-                $firstDataRow = 8;
-
-                // TROUVER LIGNE TOTAL
+                // Trouver ligne TOTAL
                 $totalsRow = null;
                 for ($r = $firstDataRow; $r <= $highestRow; $r++) {
                     if ($s->getCell("A{$r}")->getValue() === 'TOTAL') {
@@ -165,132 +145,100 @@ class PaxbusSyntheticStatSheet implements FromArray, ShouldAutoSize, WithEvents,
                         break;
                     }
                 }
-
                 $lastDataRow = $totalsRow - 1;
 
-                // STYLE DES TITRES (Lignes 1-5)
+                // ── Formule D = B + C par ligne ───────────────────────────
+                for ($row = $firstDataRow; $row <= $lastDataRow; $row++) {
+                    $s->getCell("D{$row}")->setValue("=B{$row}+C{$row}");
+
+                    foreach (['B', 'C', 'E'] as $col) {
+                        $s->setCellValueExplicit(
+                            "{$col}{$row}",
+                            (int) $s->getCell("{$col}{$row}")->getValue(),
+                            DataType::TYPE_NUMERIC
+                        );
+                        $s->getStyle("{$col}{$row}")
+                            ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                        $s->getStyle("{$col}{$row}")
+                            ->getNumberFormat()->setFormatCode('0');
+                    }
+                    $s->getStyle("A{$row}")
+                        ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
+                }
+
+                // ── Bordures données ──────────────────────────────────────
+                for ($row = $firstDataRow; $row <= $lastDataRow; $row++) {
+                    $s->getStyle("A{$row}:{$highestCol}{$row}")
+                        ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+                }
+
+                // ── Ligne TOTAL : SUM pour B, C, D, E ─────────────────────
+                if ($totalsRow) {
+                    $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
+                        ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
+                    $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
+                        ->getFont()->setBold(true)->setSize(12);
+
+                    foreach (['B', 'C', 'E'] as $col) {
+                        $s->getCell("{$col}{$totalsRow}")
+                          ->setValue("=SUM({$col}{$firstDataRow}:{$col}{$lastDataRow})");
+                        $s->getStyle("{$col}{$totalsRow}")
+                            ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                        $s->getStyle("{$col}{$totalsRow}")
+                            ->getNumberFormat()->setFormatCode('0');
+                    }
+                    // D total = somme des D (ou simplement B+C du total, cohérent)
+                    $s->getCell("D{$totalsRow}")->setValue("=B{$totalsRow}+C{$totalsRow}");
+                    $s->getStyle("D{$totalsRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
+                }
+
+                // ── Styles titres ─────────────────────────────────────────
                 for ($row = 1; $row <= 3; $row++) {
                     $s->mergeCells("A{$row}:{$highestCol}{$row}");
                     $s->getStyle("A{$row}")->getFont()->setBold(false)->setSize(10);
                     $s->getStyle("A{$row}")->getAlignment()
-                        ->setHorizontal(Alignment::HORIZONTAL_LEFT)
-                        ->setVertical(Alignment::VERTICAL_CENTER);
+                        ->setHorizontal(Alignment::HORIZONTAL_LEFT)->setVertical(Alignment::VERTICAL_CENTER);
                 }
-
-                // Ligne 5 : TITRE PRINCIPAL
                 $s->mergeCells("A5:{$highestCol}5");
                 $s->getStyle('A5')->getFont()->setBold(true)->setSize(12);
                 $s->getStyle('A5')->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                    ->setVertical(Alignment::VERTICAL_CENTER);
-                $s->getStyle('A5')
-                    ->getFill()->setFillType('solid')
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+                $s->getStyle('A5')->getFill()->setFillType('solid')
                     ->getStartColor()->setARGB('FFD9E1F2');
 
-                // EN-TÊTES LIGNE 1 : Merge et style
-                // DATE (A6)
+                // ── En-têtes ──────────────────────────────────────────────
                 $s->mergeCells("A{$headerRow1}:A{$headerRow2}");
-                
-                // VOLS DOMESTIQUES (B6:D6)
                 $s->mergeCells("B{$headerRow1}:D{$headerRow1}");
-                
-                // Style en-têtes
+
                 $s->getStyle("A{$headerRow1}:{$highestCol}{$headerRow2}")
                     ->getFont()->setBold(true)->setSize(11);
                 $s->getStyle("A{$headerRow1}:{$highestCol}{$headerRow2}")
-                    ->getFill()->setFillType('solid')
-                    ->getStartColor()->setARGB('FF4472C4');
+                    ->getFill()->setFillType('solid')->getStartColor()->setARGB('FF4472C4');
                 $s->getStyle("A{$headerRow1}:{$highestCol}{$headerRow2}")
                     ->getFont()->getColor()->setARGB('FFFFFFFF');
                 $s->getStyle("A{$headerRow1}:{$highestCol}{$headerRow2}")
-                    ->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                    ->setVertical(Alignment::VERTICAL_CENTER);
+                    ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
                 $s->getStyle("A{$headerRow1}:{$highestCol}{$headerRow2}")
-                    ->getBorders()->getAllBorders()
-                    ->setBorderStyle(Border::BORDER_THIN);
+                    ->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
 
-                // DONNÉES : Bordures et alignement
-                for ($row = $firstDataRow; $row <= $lastDataRow; $row++) {
-                    $s->getStyle("A{$row}:{$highestCol}{$row}")
-                        ->getBorders()->getAllBorders()
-                        ->setBorderStyle(Border::BORDER_THIN);
-
-                    // Colonne DATE : alignée à gauche
-                    $s->getStyle("A{$row}")
-                        ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT);
-
-                    // Colonnes numériques : alignées à droite avec setCellValueExplicit
-                    for ($col = 2; $col <= $highestColIndex; $col++) {
-                        $colLetter = Coordinate::stringFromColumnIndex($col);
-                        $cellValue = $s->getCell("{$colLetter}{$row}")->getValue();
-                        
-                        $s->setCellValueExplicit(
-                            "{$colLetter}{$row}",
-                            (int)$cellValue,
-                            DataType::TYPE_NUMERIC
-                        );
-                        
-                        $s->getStyle("{$colLetter}{$row}")
-                            ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-                        $s->getStyle("{$colLetter}{$row}")
-                            ->getNumberFormat()->setFormatCode('0');
-                    }
-                }
-
-                // LIGNE TOTAUX
-                if ($totalsRow) {
-                    $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
-                        ->getBorders()->getAllBorders()
-                        ->setBorderStyle(Border::BORDER_THIN);
-                    
-                    $s->getStyle("A{$totalsRow}:{$highestCol}{$totalsRow}")
-                        ->getFont()->setBold(true)->setSize(12);
-
-                    // Formules pour les totaux
-                    for ($col = 2; $col <= $highestColIndex; $col++) {
-                        $colLetter = Coordinate::stringFromColumnIndex($col);
-                        $s->setCellValue(
-                            "{$colLetter}{$totalsRow}",
-                            "=SUM({$colLetter}{$firstDataRow}:{$colLetter}{$lastDataRow})"
-                        );
-                        
-                        $s->getStyle("{$colLetter}{$totalsRow}")
-                            ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-                        $s->getStyle("{$colLetter}{$totalsRow}")
-                            ->getNumberFormat()->setFormatCode('0');
-                    }
-                }
-
-                // HAUTEUR DES LIGNES
                 $s->getRowDimension($headerRow1)->setRowHeight(22);
                 $s->getRowDimension($headerRow2)->setRowHeight(22);
-                if ($totalsRow) {
-                    $s->getRowDimension($totalsRow)->setRowHeight(20);
-                }
+                if ($totalsRow) $s->getRowDimension($totalsRow)->setRowHeight(20);
 
-                // SIGNATURE
+                // ── Signature ─────────────────────────────────────────────
                 $signatureRow1 = $totalsRow + 2;
                 $signatureRow2 = $signatureRow1 + 1;
+                $sigStart      = Coordinate::stringFromColumnIndex($highestColIndex - 2);
+                $sigEnd        = Coordinate::stringFromColumnIndex($highestColIndex);
 
-                $signatureStartCol = Coordinate::stringFromColumnIndex($highestColIndex - 2);
-                $signatureEndCol = Coordinate::stringFromColumnIndex($highestColIndex);
-
-                $s->mergeCells("{$signatureStartCol}{$signatureRow1}:{$signatureEndCol}{$signatureRow1}");
-                $s->getStyle("{$signatureStartCol}{$signatureRow1}")
-                    ->getFont()->setBold(true)->setSize(11);
-                $s->getStyle("{$signatureStartCol}{$signatureRow1}")
-                    ->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                    ->setVertical(Alignment::VERTICAL_CENTER);
-
-                $s->mergeCells("{$signatureStartCol}{$signatureRow2}:{$signatureEndCol}{$signatureRow2}");
-                $s->getStyle("{$signatureStartCol}{$signatureRow2}")
-                    ->getFont()->setBold(true)->setSize(12);
-                $s->getStyle("{$signatureStartCol}{$signatureRow2}")
-                    ->getAlignment()
-                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)
-                    ->setVertical(Alignment::VERTICAL_CENTER);
+                $s->mergeCells("{$sigStart}{$signatureRow1}:{$sigEnd}{$signatureRow1}");
+                $s->getStyle("{$sigStart}{$signatureRow1}")->getFont()->setBold(true)->setSize(11);
+                $s->getStyle("{$sigStart}{$signatureRow1}")->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
+                $s->mergeCells("{$sigStart}{$signatureRow2}:{$sigEnd}{$signatureRow2}");
+                $s->getStyle("{$sigStart}{$signatureRow2}")->getFont()->setBold(true)->setSize(12);
+                $s->getStyle("{$sigStart}{$signatureRow2}")->getAlignment()
+                    ->setHorizontal(Alignment::HORIZONTAL_CENTER)->setVertical(Alignment::VERTICAL_CENTER);
             },
         ];
     }

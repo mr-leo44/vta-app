@@ -76,7 +76,7 @@ class PaxbusYearlyDomesticOperatorsStatSheet implements FromArray, ShouldAutoSiz
         $data[] = ['CIES'];
         $firstArrayPMAD = ['PMAD'];
         $secondArray = [];
-        for ($i = 1; $i <= 12; $i++) { 
+        for ($i = 1; $i <= 12; $i++) {
             $secondArray[] = "≥ 50T";
             $secondArray[] = "< 50T";
         }
@@ -218,7 +218,7 @@ class PaxbusYearlyDomesticOperatorsStatSheet implements FromArray, ShouldAutoSiz
                     ->getBorders()->getAllBorders()
                     ->setBorderStyle(Border::BORDER_THIN);
 
-                
+
                 // ===========================================================
                 // Merge des colonnes de l'en tete
                 // ===========================================================
@@ -236,7 +236,7 @@ class PaxbusYearlyDomesticOperatorsStatSheet implements FromArray, ShouldAutoSiz
                 $s->mergeCells("V{$headerRow}:W{$headerRow}");
                 $s->mergeCells("X{$headerRow}:Y{$headerRow}");
                 $s->mergeCells("Z{$headerRow}:AA{$headerRow}");
-                $s->mergeCells("B" . ($headerRow + 1) . ":AA" . ($headerRow + 1)    );
+                $s->mergeCells("B" . ($headerRow + 1) . ":AA" . ($headerRow + 1));
 
                 // ═══════════════════════════════════════════════════════════
                 // ALTERNANCE DE COULEURS POUR LES LIGNES DE DONNÉES
@@ -281,7 +281,7 @@ class PaxbusYearlyDomesticOperatorsStatSheet implements FromArray, ShouldAutoSiz
                     for ($col = 2; $col <= $highestColIndex; $col++) {
                         $colLetter = Coordinate::stringFromColumnIndex($col);
                         $cellRef = "{$colLetter}{$row}";
-                        
+
                         // Si la cellule est vide, la remplir avec 0
                         if ($s->getCell($cellRef)->getValue() === null || $s->getCell($cellRef)->getValue() === '') {
                             $s->setCellValueExplicit(
@@ -313,7 +313,7 @@ class PaxbusYearlyDomesticOperatorsStatSheet implements FromArray, ShouldAutoSiz
                 // Formules verticales : somme de chaque colonne pour la ligne TOTAL
                 for ($col = 2; $col <= 27; $col++) {  // Colonnes B à AA
                     $colLetter = Coordinate::stringFromColumnIndex($col);
-                    
+
                     // Colonnes Z et AA : formules spéciales
                     if ($colLetter === 'Z') {
                         // Z: somme des colonnes ≥ 50T (B, D, F, H, J, L, N, P, R, T, V, X)

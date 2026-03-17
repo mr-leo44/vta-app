@@ -54,13 +54,13 @@ class PaxbusMonthlyReportExport implements WithMultipleSheets
 
         $voyelles = ['A', 'E', 'I', 'O', 'U', 'Y'];
         $prefixe = "";
-        foreach($voyelles as $voyelle) {
+        foreach ($voyelles as $voyelle) {
             if (str_starts_with($mois, $voyelle)) {
                 $prefixe = "D'";
                 break;
             }
         }
-        if($prefixe == "") {
+        if ($prefixe == "") {
             $prefixe = "DE ";
         }
 

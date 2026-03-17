@@ -5,14 +5,18 @@ namespace App\Http\Controllers\Api;
 use Carbon\Carbon;
 use App\Models\Flight;
 use App\Models\Operator;
+use App\Enums\FlightNatureEnum;
 use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
+use App\Exports\VTAFreightSynthAnnualExport;
+use App\Exports\VTAFreightSynthExport;
+use App\Exports\VTATrafficAnnualReportExport;
+use App\Exports\VTATrafficReportExport;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
-use App\Services\IdefFretServiceInterface;
-use App\Services\MonthlyRateServiceInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Facades\Excel;
 
 /**
  * @group ReportManagement
@@ -26,11 +30,6 @@ use Illuminate\Support\Collection;
  */
 class ReportController extends Controller
 {
-    public function __construct(
-        protected IdefFretServiceInterface    $idefFretService,
-        protected MonthlyRateServiceInterface $monthlyRateService,
-    ) {}
-
     // =========================================================================
     // PUBLIC — AGGREGATED
     // =========================================================================
@@ -53,9 +52,7 @@ class ReportController extends Controller
      *     "fret_arrivee":  […],
      *     "exced_depart":  […],
      *     "exced_arrivee": […]
-     *   },
-     *   "idef_fret":    [{ "DATE":"01/02/2026", "usd":120, "cdf":500 }, …],
-     *   "monthly_rate": 2850
+     *   }
      * }
      */
     public function monthly(string|int $month, string|int $year): array|JsonResponse
@@ -71,8 +68,6 @@ class ReportController extends Controller
         return [
             'domestic'      => $this->buildMonthlyRegime($days, FlightRegimeEnum::DOMESTIC->value),
             'international' => $this->buildMonthlyRegime($days, FlightRegimeEnum::INTERNATIONAL->value),
-            'idef_fret'     => $this->idefFretByDays($month, $year),
-            'monthly_rate'  => $this->monthlyRateService->findByMonth((string) $month, (string) $year)?->rate,
         ];
     }
 
@@ -82,7 +77,6 @@ class ReportController extends Controller
      * GET /report/yearly/{year}
      *
      * Same shape as monthly but keyed "MOIS" → "MM-YYYY".
-     * idef_fret rows carry monthly totals + exchange rate for that month.
      */
     public function yearly(string|int $year): array|JsonResponse
     {
@@ -97,7 +91,6 @@ class ReportController extends Controller
         return [
             'domestic'      => $this->buildAnnualRegime($months, $year, FlightRegimeEnum::DOMESTIC->value),
             'international' => $this->buildAnnualRegime($months, $year, FlightRegimeEnum::INTERNATIONAL->value),
-            'idef_fret'     => $this->idefFretByMonths($months, $year),
         ];
     }
 
@@ -123,9 +116,7 @@ class ReportController extends Controller
      *     "fret_arrivee":  {…},
      *     "exced_depart":  {…},
      *     "exced_arrivee": {…}
-     *   },
-     *   "idef_fret":    […],
-     *   "monthly_rate": 2850
+     *   }
      * }
      */
     public function monthlyByOperators(string|int $month, string|int $year): array|JsonResponse
@@ -142,8 +133,6 @@ class ReportController extends Controller
         return [
             'domestic'      => $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::DOMESTIC->value),
             'international' => $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::INTERNATIONAL->value),
-            'idef_fret'     => $this->idefFretByDays($month, $year),
-            'monthly_rate'  => $this->monthlyRateService->findByMonth((string) $month, (string) $year)?->rate,
         ];
     }
 
@@ -166,12 +155,114 @@ class ReportController extends Controller
         return [
             'domestic'      => $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::DOMESTIC->value),
             'international' => $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::INTERNATIONAL->value),
-            'idef_fret'     => $this->idefFretByMonths(range(1, 12), $year),
         ];
     }
 
     // =========================================================================
-    // BUILDERS — AGGREGATED
+    // PUBLIC — EXPORTS
+    // =========================================================================
+
+    /**
+     * Export monthly traffic report to Excel (2 sheets: domestic + international).
+     *
+     * GET /report/monthly/{month}/{year}/export
+     */
+    public function monthlyExport(string|int $month, string|int $year)
+    {
+        [$monthInt, $yearInt] = [(int) $month, (int) $year];
+
+        $domesticData = $this->monthly($monthInt, $yearInt);
+        if ($domesticData instanceof JsonResponse) return $domesticData;
+
+        // Re-fetch as separate arrays for the export classes
+        if (!$this->hasData($monthInt, $yearInt)) {
+            return ApiResponse::error('Pas de données disponibles', 400);
+        }
+
+        $days     = $this->getDaysOfMonth($monthInt, $yearInt);
+        $domestic      = $this->buildMonthlyRegime($days, FlightRegimeEnum::DOMESTIC->value);
+        $international = $this->buildMonthlyRegime($days, FlightRegimeEnum::INTERNATIONAL->value);
+        $monthName     = $this->getMonthName($monthInt);
+
+        return Excel::download(
+            new VTATrafficReportExport($monthName, $yearInt, $domestic, $international),
+            sprintf('EVOLUTION_TRAFIC_%s_%s.xlsx', $monthName, $yearInt)
+        );
+    }
+
+    /**
+     * Export annual traffic report to Excel (2 sheets: domestic + international).
+     *
+     * GET /report/yearly/{year}/export
+     */
+    public function yearlyExport(string|int $year)
+    {
+        $yearInt = (int) $year;
+
+        if (!$this->hasData(null, $yearInt)) {
+            return ApiResponse::error('Pas de données disponibles', 400);
+        }
+
+        $months        = range(1, 12);
+        $domestic      = $this->buildAnnualRegime($months, $yearInt, FlightRegimeEnum::DOMESTIC->value);
+        $international = $this->buildAnnualRegime($months, $yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+
+        return Excel::download(
+            new VTATrafficAnnualReportExport($yearInt, $domestic, $international),
+            sprintf('EVOLUTION_TRAFIC_%s.xlsx', $yearInt)
+        );
+    }
+
+    /**
+     * Export monthly freight synthesis by operators to Excel (4 sheets).
+     *
+     * GET /report/monthly/{month}/{year}/by-operators/export
+     */
+    public function monthlyByOperatorsExport(string|int $month, string|int $year)
+    {
+        [$monthInt, $yearInt] = [(int) $month, (int) $year];
+
+        if (!$this->hasData($monthInt, $yearInt)) {
+            return ApiResponse::error('Pas de données disponibles', 400);
+        }
+
+        $start = Carbon::create($yearInt, $monthInt, 1)->startOfMonth();
+        $end   = Carbon::create($yearInt, $monthInt, 1)->endOfMonth();
+
+        $domestic      = $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::DOMESTIC->value);
+        $international = $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::INTERNATIONAL->value);
+        $monthName     = $this->getMonthName($monthInt);
+
+        return Excel::download(
+            new VTAFreightSynthExport($monthName, $yearInt, $domestic, $international),
+            sprintf('TABLEAU SYNTHESE DE FRET_%s_%s.xlsx', $monthName, $yearInt)
+        );
+    }
+
+    /**
+     * Export annual freight synthesis by operators to Excel (4 sheets).
+     *
+     * GET /report/yearly/{year}/by-operators/export
+     */
+    public function yearlyByOperatorsExport(string|int $year)
+    {
+        $yearInt = (int) $year;
+
+        if (!$this->hasData(null, $yearInt)) {
+            return ApiResponse::error('Pas de données disponibles', 400);
+        }
+
+        $start = Carbon::create($yearInt, 1, 1)->startOfYear();
+        $end   = Carbon::create($yearInt, 12, 31)->endOfYear();
+
+        $domestic      = $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::DOMESTIC->value);
+        $international = $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::INTERNATIONAL->value);
+
+        return Excel::download(
+            new VTAFreightSynthAnnualExport($yearInt, $domestic, $international),
+            sprintf('TABLEAU SYNTHESE DE FRET_%s.xlsx', $yearInt)
+        );
+    }
     // =========================================================================
 
     /**
@@ -244,17 +335,42 @@ class ReportController extends Controller
     }
 
     // =========================================================================
-    // BUILDER — BY OPERATOR (totals only)
+    // BUILDER — BY OPERATOR (totals only, split commercial / non_commercial)
     // =========================================================================
 
     /**
-     * One keyed entry per operator — no day or month breakdown.
-     * Single DB query for the period, filtered in memory per operator.
+     * One keyed entry per operator, grouped by commercial / non_commercial.
+     * Single DB query per nature group for the period, filtered in memory.
+     *
+     * Response shape for each regime:
+     * {
+     *   "commercial": {
+     *     "pax":      { "AA": { traffic, gopass, paxbus }, … },
+     *     "fret":     { "AA": { traffic, idef }, … },
+     *     "excedents":{ "AA": { traffic, idef }, … }
+     *   },
+     *   "non_commercial": { … same structure … }
+     * }
      */
     private function buildTotalsByOperator(Carbon $start, Carbon $end, string $regime): array
     {
-        $flights   = $this->fetchFlights($start, $end, $regime);
-        $operators = $this->getOperators($regime);
+        return [
+            'commercial'     => $this->buildOperatorGroup($start, $end, $regime, true),
+            'non_commercial' => $this->buildOperatorGroup($start, $end, $regime, false),
+        ];
+    }
+
+    /**
+     * Aggregate totals for one nature group (commercial or non-commercial).
+     */
+    private function buildOperatorGroup(
+        Carbon $start,
+        Carbon $end,
+        string $regime,
+        bool   $isCommercial
+    ): array {
+        $flights   = $this->fetchFlightsByNature($start, $end, $regime, $isCommercial);
+        $operators = $this->getOperators($regime, $isCommercial);
         $isInt     = $regime === FlightRegimeEnum::INTERNATIONAL->value;
 
         $pax = $fretDep = $fretArr = $excedDep = $excedArr = [];
@@ -289,6 +405,29 @@ class ReportController extends Controller
         return Flight::with(['statistic', 'operator'])
             ->where('flight_regime', $regime)
             ->whereBetween('departure_time', [$start, $end])
+            ->where('status', FlightStatusEnum::DEPARTED)
+            ->get();
+    }
+
+    /**
+     * Same as fetchFlights but scoped to a flight nature group.
+     * Used by buildOperatorGroup to keep commercial and non-commercial
+     * flights separate without mixing them in memory.
+     */
+    private function fetchFlightsByNature(
+        Carbon $start,
+        Carbon $end,
+        string $regime,
+        bool   $isCommercial
+    ): Collection {
+        $natures = $isCommercial
+            ? [FlightNatureEnum::COMMERCIAL->value]
+            : collect(FlightNatureEnum::nonCommercial())->pluck('value')->toArray();
+
+        return Flight::with(['statistic', 'operator'])
+            ->where('flight_regime', $regime)
+            ->whereBetween('departure_time', [$start, $end])
+            ->whereIn('flight_nature', $natures)
             ->where('status', FlightStatusEnum::DEPARTED)
             ->get();
     }
@@ -373,54 +512,6 @@ class ReportController extends Controller
     }
 
     // =========================================================================
-    // IDEF FRET
-    // =========================================================================
-
-    /**
-     * One entry per calendar day; missing days default to usd=0 / cdf=0.
-     */
-    private function idefFretByDays(int $month, int $year): array
-    {
-        $start = Carbon::create($year, $month, 1)->startOfMonth();
-        $end   = Carbon::create($year, $month, 1)->endOfMonth();
-
-        $keyed = $this->idefFretService
-            ->getByDateRange($start->format('Y-m-d'), $end->format('Y-m-d'))
-            ->keyBy(fn($f) => Carbon::parse($f->date)->format('Y-m-d'));
-
-        return collect($this->getDaysOfMonth($month, $year))
-            ->map(function ($day) use ($keyed) {
-                $entry = $keyed->get($day);
-                return [
-                    'DATE' => Carbon::parse($day)->format('d/m/Y'),
-                    'usd'  => $entry?->usd ?? 0,
-                    'cdf'  => $entry?->cdf ?? 0,
-                ];
-            })
-            ->values()
-            ->toArray();
-    }
-
-    /**
-     * One entry per month with totals and the monthly exchange rate.
-     */
-    private function idefFretByMonths(array $months, int $year): array
-    {
-        return collect($months)->map(function ($month) use ($year) {
-            $days = $this->idefFretByDays($month, $year);
-            $rate = $this->monthlyRateService
-                ->findByMonth((string) $month, (string) $year)?->rate ?? 0;
-
-            return [
-                'MOIS' => Carbon::create($year, $month, 1)->format('m-Y'),
-                'usd'  => collect($days)->sum('usd'),
-                'cdf'  => collect($days)->sum('cdf'),
-                'rate' => $rate,
-            ];
-        })->toArray();
-    }
-
-    // =========================================================================
     // UTILITIES
     // =========================================================================
 
@@ -448,12 +539,21 @@ class ReportController extends Controller
     }
 
     /**
-     * All operators with at least one departed flight for the given regime.
+     * Operators with at least one departed flight of the given nature
+     * for the given regime.
+     *
+     * @param bool $isCommercial  true → COMMERCIAL flights only
+     *                            false → all non-commercial natures
      */
-    private function getOperators(string $regime): Collection
+    private function getOperators(string $regime, bool $isCommercial = true): Collection
     {
+        $natures = $isCommercial
+            ? [FlightNatureEnum::COMMERCIAL->value]
+            : collect(FlightNatureEnum::nonCommercial())->pluck('value')->toArray();
+
         return Operator::whereHas('flights', fn($q) => $q
             ->where('flight_regime', $regime)
+            ->whereIn('flight_nature', $natures)
             ->where('status', FlightStatusEnum::DEPARTED)
         )
         ->orderBy('sigle')
@@ -468,5 +568,18 @@ class ReportController extends Controller
         return collect(range(1, Carbon::create($year, $month, 1)->daysInMonth))
             ->map(fn($d) => Carbon::create($year, $month, $d)->format('Y-m-d'))
             ->toArray();
+    }
+
+    /**
+     * French month name.
+     */
+    private function getMonthName(int $month): string
+    {
+        return [
+            1  => 'JANVIER',  2  => 'FÉVRIER',   3  => 'MARS',
+            4  => 'AVRIL',    5  => 'MAI',        6  => 'JUIN',
+            7  => 'JUILLET',  8  => 'AOÛT',       9  => 'SEPTEMBRE',
+            10 => 'OCTOBRE',  11 => 'NOVEMBRE',   12 => 'DÉCEMBRE',
+        ][$month] ?? 'INCONNU';
     }
 }

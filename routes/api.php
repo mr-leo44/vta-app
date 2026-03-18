@@ -7,10 +7,11 @@ use App\Http\Controllers\Api\FlightController;
 use App\Http\Controllers\Api\FlightJustificationController;
 use App\Http\Controllers\Api\IdefFretController;
 use App\Http\Controllers\Api\IdefReportController;
-use App\Http\Controllers\Api\ReportController;
+use App\Http\Controllers\Api\ImportController;
 use App\Http\Controllers\Api\MonthlyRateController;
 use App\Http\Controllers\Api\OperatorController;
 use App\Http\Controllers\Api\PaxbusReportController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TraficReportController;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -107,6 +108,8 @@ Route::prefix('report')->group(function () {
     Route::get('/monthly/{month}/{year}/pax-by-operators/export', [ReportController::class, 'monthlyPAXByOperatorsExport']);
     Route::get('/yearly/{year}/pax-by-operators/export',          [ReportController::class, 'yearlyPAXByOperatorsExport']);
 });
+
+Route::post('/imports', [ImportController::class, 'store']);
 
 // Operators routes
 Route::get('operators/filter', [OperatorController::class, 'filter'])->name('operators.filter');

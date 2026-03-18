@@ -2,18 +2,20 @@
 
 namespace App\Http\Controllers\Api;
 
-use Carbon\Carbon;
-use App\Models\Flight;
-use App\Models\Operator;
 use App\Enums\FlightNatureEnum;
 use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
 use App\Exports\VTAFreightSynthAnnualExport;
 use App\Exports\VTAFreightSynthExport;
+use App\Exports\VTAPAXSynthAnnualExport;
+use App\Exports\VTAPAXSynthExport;
 use App\Exports\VTATrafficAnnualReportExport;
 use App\Exports\VTATrafficReportExport;
 use App\Helpers\ApiResponse;
 use App\Http\Controllers\Controller;
+use App\Models\Flight;
+use App\Models\Operator;
+use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Collection;
 use Maatwebsite\Excel\Facades\Excel;
@@ -263,6 +265,58 @@ class ReportController extends Controller
             sprintf('TABLEAU SYNTHESE DE FRET_%s.xlsx', $yearInt)
         );
     }
+
+    /**
+     * Export monthly freight synthesis by operators to Excel (4 sheets).
+     *
+     * GET /report/monthly/{month}/{year}/by-operators/export
+     */
+    public function monthlyPAXByOperatorsExport(string|int $month, string|int $year)
+    {
+        [$monthInt, $yearInt] = [(int) $month, (int) $year];
+
+        if (!$this->hasData($monthInt, $yearInt)) {
+            return ApiResponse::error('Pas de données disponibles', 400);
+        }
+
+        $start = Carbon::create($yearInt, $monthInt, 1)->startOfMonth();
+        $end   = Carbon::create($yearInt, $monthInt, 1)->endOfMonth();
+
+        $domestic      = $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::DOMESTIC->value);
+        $international = $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::INTERNATIONAL->value);
+        $monthName     = $this->getMonthName($monthInt);
+
+        return Excel::download(
+            new VTAPAXSynthExport($monthName, $yearInt, $domestic, $international),
+            sprintf('TABLEAU SYNTHESE DE PAX %s %s.xlsx', $monthName, $yearInt)
+        );
+    }
+
+    /**
+     * Export annual freight synthesis by operators to Excel (4 sheets).
+     *
+     * GET /report/yearly/{year}/by-operators/export
+     */
+    public function yearlyPAXByOperatorsExport(string|int $year)
+    {
+        $yearInt = (int) $year;
+
+        if (!$this->hasData(null, $yearInt)) {
+            return ApiResponse::error('Pas de données disponibles', 400);
+        }
+
+        $start = Carbon::create($yearInt, 1, 1)->startOfYear();
+        $end   = Carbon::create($yearInt, 12, 31)->endOfYear();
+
+        $domestic      = $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::DOMESTIC->value);
+        $international = $this->buildTotalsByOperator($start, $end, FlightRegimeEnum::INTERNATIONAL->value);
+
+        return Excel::download(
+            new VTAPAXSynthAnnualExport($yearInt, $domestic, $international),
+            sprintf('TABLEAU SYNTHESE DE PAX %s.xlsx', $yearInt)
+        );
+    }
+
     // =========================================================================
 
     /**

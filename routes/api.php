@@ -99,11 +99,13 @@ Route::prefix('report')->group(function () {
     Route::get('/monthly/{month}/{year}/by-operators', [ReportController::class, 'monthlyByOperators']);
     Route::get('/yearly/{year}/by-operators',          [ReportController::class, 'yearlyByOperators']);
 
-    // Exports (step 2 — stubs registered now, implementations added in next commit)
+    // Exports (stubs registered now, implementations added in next commit)
     Route::get('/monthly/{month}/{year}/export',              [ReportController::class, 'monthlyExport']);
     Route::get('/yearly/{year}/export',                       [ReportController::class, 'yearlyExport']);
     Route::get('/monthly/{month}/{year}/by-operators/export', [ReportController::class, 'monthlyByOperatorsExport']);
     Route::get('/yearly/{year}/by-operators/export',          [ReportController::class, 'yearlyByOperatorsExport']);
+    Route::get('/monthly/{month}/{year}/pax-by-operators/export', [ReportController::class, 'monthlyPAXByOperatorsExport']);
+    Route::get('/yearly/{year}/pax-by-operators/export',          [ReportController::class, 'yearlyPAXByOperatorsExport']);
 });
 
 // Operators routes

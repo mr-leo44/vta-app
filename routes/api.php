@@ -7,6 +7,7 @@ use App\Http\Controllers\Api\FlightController;
 use App\Http\Controllers\Api\FlightJustificationController;
 use App\Http\Controllers\Api\IdefFretController;
 use App\Http\Controllers\Api\IdefReportController;
+use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\MonthlyRateController;
 use App\Http\Controllers\Api\OperatorController;
 use App\Http\Controllers\Api\PaxbusReportController;
@@ -86,6 +87,23 @@ Route::prefix('idef-report')->group(function () {
         IdefReportController::class,
         'monthlyReport',
     ]);
+});
+
+// ─── Unified Report routes ────────────────────────────────────────────────────
+Route::prefix('report')->group(function () {
+    // Aggregated by regime
+    Route::get('/monthly/{month}/{year}',        [ReportController::class, 'monthly']);
+    Route::get('/yearly/{year}',                 [ReportController::class, 'yearly']);
+
+    // Broken down by operator
+    Route::get('/monthly/{month}/{year}/by-operators', [ReportController::class, 'monthlyByOperators']);
+    Route::get('/yearly/{year}/by-operators',          [ReportController::class, 'yearlyByOperators']);
+
+    // Exports (step 2 — stubs registered now, implementations added in next commit)
+    Route::get('/monthly/{month}/{year}/export',              [ReportController::class, 'monthlyExport']);
+    Route::get('/yearly/{year}/export',                       [ReportController::class, 'yearlyExport']);
+    Route::get('/monthly/{month}/{year}/by-operators/export', [ReportController::class, 'monthlyByOperatorsExport']);
+    Route::get('/yearly/{year}/by-operators/export',          [ReportController::class, 'yearlyByOperatorsExport']);
 });
 
 // Operators routes

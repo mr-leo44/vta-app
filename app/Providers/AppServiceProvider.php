@@ -74,13 +74,13 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Scramble::configure()
-        ->withDocumentTransformers(function (OpenApi $openApi) {
-            $openApi->components->securitySchemes['bearer'] = SecurityScheme::http('bearer');
+            ->withDocumentTransformers(function (OpenApi $openApi) {
+                $openApi->components->securitySchemes['bearer'] = SecurityScheme::http('bearer');
 
-            $openApi->security[] = new SecurityRequirement([
-                'bearer' => [],
-            ]);
-        });
+                $openApi->security[] = new SecurityRequirement([
+                    'bearer' => [],
+                ]);
+            });
 
         // ── Enregistrement des Policies ───────────────────────────────────
         Gate::policy(Flight::class, FlightPolicy::class);
@@ -102,5 +102,6 @@ class AppServiceProvider extends ServiceProvider
         Aircraft::observe(AuditObserver::class);
         AircraftType::observe(AuditObserver::class);
         Operator::observe(AuditObserver::class);
+        User::observe(AuditObserver::class);
     }
 }

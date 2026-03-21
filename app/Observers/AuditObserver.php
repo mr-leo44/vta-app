@@ -2,26 +2,18 @@
 
 namespace App\Observers;
 
+use App\Models\AuditLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Log;
 
 /**
- * Observer d'audit générique.
+ * AuditObserver — version base de données.
  *
- * À attacher sur : Flight, Aircraft, AircraftType, Operator
- * via AppServiceProvider::boot().
- *
- * Responsabilités :
- *  - Remplit automatiquement created_by / updated_by avant persitance
- *  - Journalise chaque événement dans le canal "audit" avec l'identité de l'acteur
+ * Insère dans audit_logs (plus de Log::channel fichier).
+ * Remplit created_by / updated_by avant persistence si la colonne existe.
  */
 class AuditObserver
 {
-    // ─────────────────────────────────────────────────────────────────────
-    // Hooks Eloquent (avant persistence)
-    // ─────────────────────────────────────────────────────────────────────
-
     public function creating(Model $model): void
     {
         if (Auth::check() && in_array('created_by', $model->getFillable(), true)) {
@@ -36,53 +28,56 @@ class AuditObserver
         }
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Hooks Eloquent (après persistence → log)
-    // ─────────────────────────────────────────────────────────────────────
-
     public function created(Model $model): void
     {
-        $this->log('created', $model);
+        $this->record('created', $model, newValues: $model->getAttributes());
     }
 
     public function updated(Model $model): void
     {
-        // Ne log que les changements réels (getChanges() exclut les champs inchangés)
         $changes = $model->getChanges();
         unset($changes['updated_at'], $changes['updated_by']);
 
-        if (! empty($changes)) {
-            $this->log('updated', $model, [
-                'old' => array_intersect_key($model->getOriginal(), $changes),
-                'new' => $changes,
-            ]);
+        if (empty($changes)) {
+            return;
         }
+
+        $this->record('updated', $model,
+            oldValues: array_intersect_key($model->getOriginal(), $changes),
+            newValues: $changes,
+        );
     }
 
     public function deleted(Model $model): void
     {
-        $this->log('deleted', $model);
+        $this->record('deleted', $model, oldValues: $model->getAttributes());
     }
 
     public function restored(Model $model): void
     {
-        $this->log('restored', $model);
+        $this->record('restored', $model, newValues: $model->getAttributes());
     }
 
-    // ─────────────────────────────────────────────────────────────────────
-    // Logging interne
-    // ─────────────────────────────────────────────────────────────────────
+    private function record(
+        string $event,
+        Model  $model,
+        array  $oldValues = [],
+        array  $newValues = [],
+    ): void {
+        // Évite la récursion infinie si AuditLog lui-même était observé
+        if ($model instanceof AuditLog) {
+            return;
+        }
 
-    private function log(string $event, Model $model, array $diff = []): void
-    {
-        Log::channel('audit')->info($event, [
-            'model'      => class_basename($model),
-            'id'         => $model->getKey(),
-            'actor_id'   => Auth::id(),
-            'actor_name' => Auth::user()?->name,
-            'actor_ip'   => request()->ip(),
-            'user_agent' => request()->userAgent(),
-            'diff'       => $diff,
+        AuditLog::create([
+            'event'          => $event,
+            'auditable_type' => get_class($model),
+            'auditable_id'   => $model->getKey(),
+            'actor_id'       => Auth::id(),
+            'actor_ip'       => request()->ip(),
+            'actor_agent'    => substr((string) request()->userAgent(), 0, 255),
+            'old_values'     => $oldValues ?: null,
+            'new_values'     => $newValues ?: null,
         ]);
     }
 }

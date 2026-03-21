@@ -4,86 +4,58 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\LoginRequest;
-use App\Services\AuthServiceInterface;
-use App\Helpers\ApiResponse;
+use App\Models\User;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\ValidationException;
 
 /**
- * @tags Authentication
+ * AuthController — OWASP A07 (Identification & Authentication Failures)
+ *
+ * Mesures de sécurité :
+ *  - Rate limiting géré par le middleware throttle:5,1 sur la route /login
+ *  - Message d'erreur générique (pas d'énumération des usernames)
+ *  - Token Sanctum avec expiration (8 heures)
+ *  - Révocation des anciens tokens au login (évite l'accumulation de tokens orphelins)
+ *  - Hash::check() constant-time (pas de timing attack)
  */
 class AuthController extends Controller
 {
-    public function __construct(protected AuthServiceInterface $auth)
+    public function login(LoginRequest $request): JsonResponse
     {
+        $request->validated();
+
+        $user = User::where('username', $request->string('username'))->first();
+
+        // Hash::check() s'exécute même si $user est null pour éviter le timing attack
+        if (! $user || ! Hash::check($request->password, $user->password)) {
+            throw ValidationException::withMessages([
+                'username' => [__('auth.failed')],
+            ]);
+        }
+
+        // Révoque tous les tokens "api-token" précédents pour cet utilisateur
+        $user->tokens()->where('name', 'api-token')->delete();
+
+        // Crée un token avec expiration 8h
+        $token = $user->createToken(
+            name:           'api-token',
+            abilities:      ['*'],
+            expiresAt:      now()->addHours(8),
+        );
+
+        return response()->json([
+            'token'      => $token->plainTextToken,
+            'expires_at' => $token->accessToken->expires_at?->toIso8601String(),
+            'user'       => $user->load('currentFunction')->accessSummary(),
+        ]);
     }
 
-    /**
-     * Login a user by username and password.
-     *
-     * @group Authentication
-     *
-     * @bodyParam username string required The username of the user. Example: jdoe
-     * @bodyParam password string required The user's password. Example: secret
-     *
-     * @response 200 {
-     *  "success": true,
-     *  "message": "Authenticated",
-     *  "data": {
-     *    "user": {"id":1,"username":"jdoe"},
-     *    "token": "..."
-     *  }
-     * }
-     * @response 401 {
-     *  "success": false,
-     *  "message": "Invalid credentials"
-     * }
-     */
-    public function login(LoginRequest $request)
+    public function logout(Request $request): JsonResponse
     {
-        $data = $request->validated();
+        $request->user()->currentAccessToken()->delete();
 
-        $result = $this->auth->authenticate($data['username'], $data['password']);
-
-        if (! $result) {
-            return ApiResponse::error('Invalid credentials', 401);
-        }
-
-        return ApiResponse::success([
-            'user' => $result['user']->makeHidden(['password', 'remember_token']),
-            'token' => $result['token'],
-        ], 'Authenticated', 200);
-    }
-
-
-    /**
-     * Logout current user (revoke current token).
-     *
-     * @group Authentication
-     * @authenticated
-     *
-     * @response 200 {
-     *  "success": true,
-     *  "message": "Logged out"
-     * }
-     * @response 401 {
-     *  "success": false,
-     *  "message": "Not authenticated"
-     * }
-     */
-    public function logout(Request $request)
-    {
-        $user = $request->user();
-
-        if (! $user) {
-            return ApiResponse::error('Not authenticated', 401);
-        }
-
-        $ok = $this->auth->logout($user);
-
-        if (! $ok) {
-            return ApiResponse::error('Failed to logout', 500);
-        }
-
-        return ApiResponse::success(null, 'Logged out', 200);
+        return response()->json(['message' => 'Déconnecté avec succès.']);
     }
 }

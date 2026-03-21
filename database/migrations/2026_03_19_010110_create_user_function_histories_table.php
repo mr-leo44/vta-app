@@ -13,21 +13,21 @@ return new class extends Migration
             $table->id();
 
             $table->foreignId('user_id')
-                  ->constrained()
+                  ->constrained('users')   // explicite — évite toute ambiguïté
                   ->cascadeOnDelete();
 
-            // Valeurs issues de l'enum UserFunction
-            $table->string('function')->default(UserFunction::VTA->value);
+            $table->string('function');    // pas de default — la valeur est toujours fournie
 
             $table->date('start_date');
-            $table->date('end_date')->nullable();  // null = fonction active
+            $table->date('end_date')->nullable(); // null = fonction active
 
             $table->timestamps();
 
-            // Index pour accélérer la recherche de la fonction active
-            $table->index(['user_id', 'end_date']);
-            // Index pour les contraintes singleton (cherche par function + end_date)
-            $table->index(['function', 'end_date']);
+            // Recherche rapide de la fonction active d'un utilisateur
+            $table->index(['user_id', 'end_date'], 'ufh_user_active_idx');
+
+            // Recherche rapide des singletons actifs (contrainte unicité métier)
+            $table->index(['function', 'end_date'], 'ufh_function_active_idx');
         });
     }
 

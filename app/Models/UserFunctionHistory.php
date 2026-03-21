@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\UserFunction;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -18,8 +19,8 @@ class UserFunctionHistory extends Model
     protected function casts(): array
     {
         return [
-            'start_date' => 'date',
-            'end_date'   => 'date',
+            'start_date' => 'date:Y-m-d',
+            'end_date'   => 'date:Y-m-d',
         ];
     }
 
@@ -33,8 +34,24 @@ class UserFunctionHistory extends Model
     }
 
     // ─────────────────────────────────────────────────────────────────────
+    // Scopes
+    // ─────────────────────────────────────────────────────────────────────
+
+    /** Filtre les fonctions actuellement actives (end_date IS NULL). */
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->whereNull('end_date');
+    }
+
+    /** Filtre les fonctions terminées. */
+    public function scopeClosed(Builder $query): Builder
+    {
+        return $query->whereNotNull('end_date');
+    }
+
+    // ─────────────────────────────────────────────────────────────────────
     // Helpers
-    // ───────────────────────────────────────────────────────────  ──────────
+    // ─────────────────────────────────────────────────────────────────────
 
     public function functionEnum(): ?UserFunction
     {

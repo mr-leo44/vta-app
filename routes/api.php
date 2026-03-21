@@ -13,142 +13,199 @@ use App\Http\Controllers\Api\OperatorController;
 use App\Http\Controllers\Api\PaxbusReportController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TraficReportController;
-use Illuminate\Http\Request;
+use App\Http\Controllers\Api\UserController;
 use Illuminate\Support\Facades\Route;
 
-// Authentication routes
-Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:5,1');
+// ─────────────────────────────────────────────────────────────────────────────
+// Routes publiques (sans authentification)
+// ─────────────────────────────────────────────────────────────────────────────
+
+Route::post('/login',  [AuthController::class, 'login'])->middleware('throttle:5,1');
 Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanctum');
 
-Route::get('/user', function (Request $request) {
-    return $request->user();
-})->middleware('auth:sanctum');
+// ─────────────────────────────────────────────────────────────────────────────
+// Routes protégées — token Sanctum obligatoire
+// ─────────────────────────────────────────────────────────────────────────────
 
-// Reports routes
-Route::prefix('trafic-report')->group(function () {
-    Route::get('/yearly/export/{year?}', [
-        TraficReportController::class,
-        'exportYearlyReport',
-    ]);
-    Route::get('/monthly/export/{month?}/{year?}', [
-        TraficReportController::class,
-        'monthlyExportReport',
-    ]);
-    Route::get('/yearly/{year?}/{regime?}', [
-        TraficReportController::class,
-        'yearlyReport',
-    ]);
-    Route::get('/monthly/{month?}/{year?}/{regime?}', [
-        TraficReportController::class,
-        'monthlyReport',
-    ]);
+Route::middleware('auth:sanctum')->group(function () {
+
+    // ── Profil utilisateur connecté (permissions incluses → store Pinia) ──
+    Route::get('/user', [UserController::class, 'me']);
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Gestion des utilisateurs — admin uniquement
+    // ─────────────────────────────────────────────────────────────────────
+
+    Route::prefix('users')->group(function () {
+        Route::get('/',    [UserController::class, 'index']);   // user.viewAny
+        Route::post('/',   [UserController::class, 'store']);   // user.create
+        Route::put('/{user}',    [UserController::class, 'update']);   // user.update
+        Route::delete('/{user}', [UserController::class, 'destroy']);  // user.delete
+
+        // Assigne une fonction (sync rôle Spatie automatique)
+        Route::post('/{user}/assign-function', [UserController::class, 'assignFunction']); // user.assignFunction
+    });
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Vols — permissions granulaires via FlightPolicy
+    // ─────────────────────────────────────────────────────────────────────
+
+    Route::prefix('flights')->group(function () {
+        // Lecture (flight.viewAny)
+        Route::get('/filter', [FlightController::class, 'filter'])->name('flights.filter');
+        Route::get('/all',    [FlightController::class, 'all'])->name('flights.all');
+        Route::get('/daily',  [FlightController::class, 'flightsByDate'])->name('flights.daily');
+
+        // Validation (flight.validate — admin uniquement via FlightPolicy)
+        Route::post('/{flight}/validate', [FlightController::class, 'validateFlight'])
+             ->name('flights.validate');
+    });
+
+    Route::apiResource('flights', FlightController::class);
+    // index   → FlightPolicy::viewAny  (flight.viewAny)
+    // show    → FlightPolicy::view     (flight.view)
+    // store   → FlightPolicy::create   (flight.create)
+    // update  → FlightPolicy::update   (flight.updateOwn | flight.updateAny)
+    // destroy → FlightPolicy::delete   (flight.deleteOwn | flight.deleteAny)
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Opérateurs
+    // ─────────────────────────────────────────────────────────────────────
+
+    Route::middleware('permission:operator.viewAny')->group(function () {
+        Route::get('operators/filter', [OperatorController::class, 'filter'])->name('operators.filter');
+        Route::get('operators/search', [OperatorController::class, 'search'])->name('operators.search');
+        Route::get('operators/all',    [OperatorController::class, 'all'])->name('operators.all');
+    });
+
+    Route::apiResource('operators', OperatorController::class);
+    // index   → permission:operator.viewAny (via middleware Spatie sur la resource)
+    // show    → permission:operator.view
+    // store   → permission:operator.create
+    // update  → permission:operator.update
+    // destroy → permission:operator.delete
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Types d'avion
+    // ─────────────────────────────────────────────────────────────────────
+
+    Route::middleware('permission:aircraftType.viewAny')->group(function () {
+        Route::get('aircraft-types/filter',       [AircraftTypeController::class, 'filter'])->name('aircraft-types.filter');
+        Route::get('aircraft-types/find/{query}', [AircraftTypeController::class, 'find'])->name('aircraft-types.find');
+        Route::get('aircraft-types/all',          [AircraftTypeController::class, 'all'])->name('aircraft-types.all');
+    });
+
+    Route::apiResource('aircraft-types', AircraftTypeController::class);
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Avions
+    // ─────────────────────────────────────────────────────────────────────
+
+    Route::middleware('permission:aircraft.viewAny')->group(function () {
+        Route::get('aircrafts/filter', [AircraftController::class, 'filter'])->name('aircrafts.filter');
+        Route::get('aircrafts/search', [AircraftController::class, 'search'])->name('aircrafts.search');
+        Route::get('aircrafts/all',    [AircraftController::class, 'all'])->name('aircrafts.all');
+        Route::get('operators/{operator}/aircrafts', [AircraftController::class, 'byOperator'])->name('aircrafts.byOperator');
+    });
+
+    Route::apiResource('aircrafts', AircraftController::class);
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Justifications de vol
+    // ─────────────────────────────────────────────────────────────────────
+
+    Route::apiResource('flight-justifications', FlightJustificationController::class);
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Import de fichiers — admin uniquement (files.import)
+    // ─────────────────────────────────────────────────────────────────────
+
+    Route::post('/imports', [ImportController::class, 'store'])
+         ->middleware('permission:files.import');
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Rapports — lecture (report.view) et export (report.export)
+    // ─────────────────────────────────────────────────────────────────────
+
+    Route::middleware('permission:report.view')->group(function () {
+        // Trafic
+        Route::prefix('trafic-report')->group(function () {
+            Route::get('/yearly/{year?}/{regime?}',        [TraficReportController::class, 'yearlyReport']);
+            Route::get('/monthly/{month?}/{year?}/{regime?}', [TraficReportController::class, 'monthlyReport']);
+        });
+
+        // PAX Bus
+        Route::prefix('paxbus-report')->group(function () {
+            Route::get('/yearly/{year}/{regime}',              [PaxbusReportController::class, 'yearlyReport']);
+            Route::get('/monthly/{month}/{year}/{regime}',     [PaxbusReportController::class, 'monthlyReport']);
+            Route::get('/weekly/{quinzaine}/{month}/{year}/{regime}', [PaxbusReportController::class, 'weeklyReport']);
+        });
+
+        // IDEF
+        Route::prefix('idef-report')->group(function () {
+            Route::get('/yearly/{year?}/{regime?}',           [IdefReportController::class, 'yearlyReport']);
+            Route::get('/monthly/{month?}/{year?}/{regime?}', [IdefReportController::class, 'monthlyReport']);
+        });
+
+        // Rapport unifié
+        Route::prefix('report')->group(function () {
+            Route::get('/monthly/{month}/{year}',             [ReportController::class, 'monthly']);
+            Route::get('/yearly/{year}',                      [ReportController::class, 'yearly']);
+            Route::get('/monthly/{month}/{year}/by-operators',[ReportController::class, 'monthlyByOperators']);
+            Route::get('/yearly/{year}/by-operators',         [ReportController::class, 'yearlyByOperators']);
+        });
+    });
+
+    Route::middleware('permission:report.export')->group(function () {
+        // Trafic exports
+        Route::prefix('trafic-report')->group(function () {
+            Route::get('/yearly/export/{year?}',              [TraficReportController::class, 'exportYearlyReport']);
+            Route::get('/monthly/export/{month?}/{year?}',    [TraficReportController::class, 'monthlyExportReport']);
+        });
+
+        // PAX Bus exports
+        Route::prefix('paxbus-report')->group(function () {
+            Route::get('/yearly/export/{year}',               [PaxbusReportController::class, 'yearlyExportReport']);
+            Route::get('/monthly/export/{month}/{year}',      [PaxbusReportController::class, 'monthlyExportReport']);
+            Route::get('/weekly/export/{quinzaine}/{month}/{year}', [PaxbusReportController::class, 'weeklyExportReport']);
+        });
+
+        // IDEF exports
+        Route::prefix('idef-report')->group(function () {
+            Route::get('/yearly/export/{year?}',              [IdefReportController::class, 'yearlyExportReport']);
+            Route::get('/monthly/export/{month?}/{year?}',    [IdefReportController::class, 'monthlyExportReport']);
+        });
+
+        // Rapport unifié exports
+        Route::prefix('report')->group(function () {
+            Route::get('/monthly/{month}/{year}/export',                       [ReportController::class, 'monthlyExport']);
+            Route::get('/yearly/{year}/export',                                [ReportController::class, 'yearlyExport']);
+            Route::get('/monthly/{month}/{year}/by-operators/export',          [ReportController::class, 'monthlyByOperatorsExport']);
+            Route::get('/yearly/{year}/by-operators/export',                   [ReportController::class, 'yearlyByOperatorsExport']);
+            Route::get('/monthly/{month}/{year}/pax-by-operators/export',      [ReportController::class, 'monthlyPAXByOperatorsExport']);
+            Route::get('/yearly/{year}/pax-by-operators/export',               [ReportController::class, 'yearlyPAXByOperatorsExport']);
+        });
+    });
+
+    // ─────────────────────────────────────────────────────────────────────
+    // IDEF Frets — admin / manager
+    // ─────────────────────────────────────────────────────────────────────
+
+    Route::prefix('idef-frets')->group(function () {
+        Route::post('/batch',          [IdefFretController::class, 'storeBatch']);
+        Route::get('/by-date/{date}',  [IdefFretController::class, 'getIdefFretByDate'])->name('idefrets.byDate');
+        Route::get('/range/{from}/{to}', [IdefFretController::class, 'getIdefFretsByRange'])->name('idefrets.range');
+    });
+
+    Route::apiResource('idef-frets', IdefFretController::class)->except(['index', 'show']);
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Taux mensuels
+    // ─────────────────────────────────────────────────────────────────────
+
+    Route::prefix('monthly-rates')->group(function () {
+        Route::get('/by-month/{month}/{year}', [MonthlyRateController::class, 'getMonthlyRateByMonth'])->name('monthly-rates.byMonth');
+    });
+
+    Route::apiResource('monthly-rates', MonthlyRateController::class)->except(['show']);
 });
-
-Route::prefix('paxbus-report')->group(function () {
-    Route::get('/yearly/export/{year}', [
-        PaxbusReportController::class,
-        'yearlyExportReport',
-    ]);
-    Route::get('/monthly/export/{month}/{year}', [
-        PaxbusReportController::class,
-        'monthlyExportReport',
-    ]);
-    Route::get('/weekly/export/{quinzaine}/{month}/{year}', [
-        PaxbusReportController::class,
-        'weeklyExportReport',
-    ]);
-    Route::get('/yearly/{year}/{regime}', [
-        PaxbusReportController::class,
-        'yearlyReport',
-    ]);
-    Route::get('/monthly/{month}/{year}/{regime}', [
-        PaxbusReportController::class,
-        'monthlyReport',
-    ]);
-    Route::get('/weekly/{quinzaine}/{month}/{year}/{regime}', [
-        PaxbusReportController::class,
-        'weeklyReport',
-    ]);
-});
-
-Route::prefix('idef-report')->group(function () {
-    Route::get('/yearly/export/{year?}', [
-        IdefReportController::class,
-        'yearlyExportReport',
-    ]);
-    Route::get('/monthly/export/{month?}/{year?}', [
-        IdefReportController::class,
-        'monthlyExportReport',
-    ]);
-    Route::get('/yearly/{year?}/{regime?}', [
-        IdefReportController::class,
-        'yearlyReport',
-    ]);
-    Route::get('/monthly/{month?}/{year?}/{regime?}', [
-        IdefReportController::class,
-        'monthlyReport',
-    ]);
-});
-
-// ─── Unified Report routes ────────────────────────────────────────────────────
-Route::prefix('report')->group(function () {
-    // Aggregated by regime
-    Route::get('/monthly/{month}/{year}',        [ReportController::class, 'monthly']);
-    Route::get('/yearly/{year}',                 [ReportController::class, 'yearly']);
-
-    // Broken down by operator
-    Route::get('/monthly/{month}/{year}/by-operators', [ReportController::class, 'monthlyByOperators']);
-    Route::get('/yearly/{year}/by-operators',          [ReportController::class, 'yearlyByOperators']);
-
-    // Exports (stubs registered now, implementations added in next commit)
-    Route::get('/monthly/{month}/{year}/export',              [ReportController::class, 'monthlyExport']);
-    Route::get('/yearly/{year}/export',                       [ReportController::class, 'yearlyExport']);
-    Route::get('/monthly/{month}/{year}/by-operators/export', [ReportController::class, 'monthlyByOperatorsExport']);
-    Route::get('/yearly/{year}/by-operators/export',          [ReportController::class, 'yearlyByOperatorsExport']);
-    Route::get('/monthly/{month}/{year}/pax-by-operators/export', [ReportController::class, 'monthlyPAXByOperatorsExport']);
-    Route::get('/yearly/{year}/pax-by-operators/export',          [ReportController::class, 'yearlyPAXByOperatorsExport']);
-});
-
-Route::post('/imports', [ImportController::class, 'store']);
-
-// Operators routes
-Route::get('operators/filter', [OperatorController::class, 'filter'])->name('operators.filter');
-Route::get('operators/search', [OperatorController::class, 'search'])->name('operators.search');
-Route::get('operators/all', [OperatorController::class, 'all'])->name('operators.all');
-Route::apiResource('operators', OperatorController::class);
-
-// Aircraft Types routes
-Route::get('aircraft-types/filter', [AircraftTypeController::class, 'filter'])->name('aircraft-types.filter');
-Route::get('aircraft-types/find/{query}', [AircraftTypeController::class, 'find'])->name('aircraft-types.find');
-Route::get('aircraft-types/all', [AircraftTypeController::class, 'all'])->name('aircraft-types.all');
-Route::apiResource('aircraft-types', AircraftTypeController::class);
-
-// Aircraft routes
-Route::get('aircrafts/filter', [AircraftController::class, 'filter'])->name('aircrafts.filter');
-Route::get('aircrafts/search', [AircraftController::class, 'search'])->name('aircrafts.search');
-Route::get('aircrafts/all', [AircraftController::class, 'all'])->name('aircrafts.all');
-Route::get('operators/{operator}/aircrafts', [AircraftController::class, 'byOperator'])->name('aircrafts.byOperator');
-Route::apiResource('aircrafts', AircraftController::class);
-
-// Flight Justifications routes
-Route::apiResource('flight-justifications', FlightJustificationController::class);
-
-// Flights routes
-Route::get('flights/filter', [FlightController::class, 'filter'])->name('flights.filter');
-Route::get('flights/all', [FlightController::class, 'all'])->name('flights.all');
-Route::get('flights/daily', [FlightController::class, 'flightsByDate'])->name('flights.daily');
-Route::apiResource('flights', FlightController::class);
-
-// IdefFret routes
-Route::prefix('idef-frets')->group(function () {
-    Route::post('/batch', [IdefFretController::class, 'storeBatch']);
-    Route::get('/by-date/{date}', [IdefFretController::class, 'getIdefFretByDate'])->name('idefrets.byDate');
-    Route::get('/range/{from}/{to}', [IdefFretController::class, 'getIdefFretsByRange'])->name('idefrets.range');
-});
-Route::apiResource('idef-frets', IdefFretController::class)->except(['index', 'show']);
-
-// Monthly rate routes
-Route::prefix('monthly-rates')->group(function () {
-    Route::get('/by-month/{month}/{year}', [MonthlyRateController::class, 'getMonthlyRateByMonth'])->name('monthly-rates.byMonth');
-});
-Route::apiResource('monthly-rates', MonthlyRateController::class)->except(['show']);

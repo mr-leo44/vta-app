@@ -83,4 +83,9 @@ class FlightService
             $this->flightRepo->delete($flight);
         });
     }
+
+    public function filter(array $filters)
+    {
+        return $this->flightRepo->filter($filters);
+    }
 }

@@ -7,7 +7,6 @@ use Maatwebsite\Excel\Concerns\ShouldAutoSize;
 use Maatwebsite\Excel\Concerns\WithEvents;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
@@ -38,14 +37,16 @@ class PaxbusWeeklyDomesticSheet implements FromArray, ShouldAutoSize, WithEvents
         $arrayData = [];
 
         // TITRES
-        foreach ([
-            ['SERVICE VTA'],
-            ['BUREAU PAX BUS'],
-            ["RVA AERO/N'DJILI"],
-            [''],
-            [$this->title],
-            [$this->subTitle],
-        ] as $line) {
+        foreach (
+            [
+                ['SERVICE VTA'],
+                ['BUREAU PAX BUS'],
+                ["RVA AERO/N'DJILI"],
+                [''],
+                [$this->title],
+                [$this->subTitle],
+            ] as $line
+        ) {
             $arrayData[] = array_pad($line, $cols, '');
         }
 

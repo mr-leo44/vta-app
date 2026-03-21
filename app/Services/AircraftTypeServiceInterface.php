@@ -15,4 +15,5 @@ interface AircraftTypeServiceInterface
     public function store(array $data): AircraftType;
     public function update(AircraftType $aircraftType, array $data): AircraftType;
     public function delete(AircraftType $aircraftType): void;
+    public function filter(array $filters): LengthAwarePaginator;
 }

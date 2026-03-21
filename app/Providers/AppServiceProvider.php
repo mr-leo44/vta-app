@@ -13,6 +13,14 @@ use App\Policies\UserPolicy;
 use App\Repositories\AircraftRepository;
 use App\Repositories\AircraftRepositoryInterface;
 use App\Repositories\AircraftTypeRepository;
+use App\Repositories\IdefFretRepository;
+use App\Repositories\IdefFretRepositoryInterface;
+use App\Repositories\MonthlyRateRepository;
+use App\Repositories\MonthlyRateRepositoryInterface;
+use App\Services\IdefFretService;
+use App\Services\IdefFretServiceInterface;
+use App\Services\MonthlyRateService;
+use App\Services\MonthlyRateServiceInterface;
 use App\Repositories\AircraftTypeRepositoryInterface;
 use App\Repositories\EloquentUserRepository;
 use App\Repositories\FlightJustificationRepository;
@@ -54,6 +62,10 @@ class AppServiceProvider extends ServiceProvider
         $this->app->bind(AircraftTypeServiceInterface::class, AircraftTypeService::class);
         $this->app->bind(FlightJustificationRepositoryInterface::class, FlightJustificationRepository::class);
         $this->app->bind(FlightRepositoryInterface::class, FlightRepository::class);
+        $this->app->bind(IdefFretRepositoryInterface::class, IdefFretRepository::class);
+        $this->app->bind(IdefFretServiceInterface::class, IdefFretService::class);
+        $this->app->bind(MonthlyRateRepositoryInterface::class, MonthlyRateRepository::class);
+        $this->app->bind(MonthlyRateServiceInterface::class, MonthlyRateService::class);
     }
 
     /**

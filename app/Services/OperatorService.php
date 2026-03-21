@@ -42,4 +42,9 @@ class OperatorService implements OperatorServiceInterface
     {
         return $this->repository->findByNameOrIata($term);
     }
+
+    public function filter(array $filters): LengthAwarePaginator
+    {
+        return $this->repository->filter($filters);
+    }
 }

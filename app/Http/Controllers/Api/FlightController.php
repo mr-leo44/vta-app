@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\FlightStoreRequest;
 use App\Http\Requests\FlightUpdateRequest;
+use App\Http\Requests\FilterFlightRequest;
 use App\Http\Resources\FlightResource;
 use App\Models\Flight;
 use App\Services\FlightService;
@@ -121,6 +122,27 @@ class FlightController extends Controller
             ->get();
 
         // Return the flights as JSON
+        return FlightResource::collection($flights);
+    }
+
+    /**
+     * Filter flights with advanced criteria.
+     *
+     * @queryParam search string Search in flight number or airports. Example: AF
+     * @queryParam status string Filter by flight status. Example: Completed
+     * @queryParam flight_regime string Filter by flight regime. Example: Domestic
+     * @queryParam flight_type string Filter by flight type. Example: Regular
+     * @queryParam operator_id integer Filter by operator ID. Example: 1
+     * @queryParam aircraft_id integer Filter by aircraft ID. Example: 2
+     * @queryParam departure_date_from date Start date range. Example: 2026-01-01
+     * @queryParam departure_date_to date End date range. Example: 2026-01-31
+     * @queryParam sort string The sort order. Example: departure_time:desc
+     * @queryParam per_page integer Items per page. Example: 20
+     */
+    public function filter(FilterFlightRequest $request)
+    {
+        $filters = $request->getFilters();
+        $flights = $this->flightService->filter($filters);
         return FlightResource::collection($flights);
     }
 }

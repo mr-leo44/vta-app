@@ -54,4 +54,61 @@ class FlightRepository implements FlightRepositoryInterface
     {
         $flight->delete();
     }
+
+    public function filter(array $filters)
+    {
+        $query = Flight::with(['statistic', 'operator', 'aircraft']);
+
+        // Search in flight_number, departure airport, arrival airport
+        if (!empty($filters['search'])) {
+            $search = $filters['search'];
+            $query->where(function ($q) use ($search) {
+                $q->where('flight_number', 'like', "%$search%")
+                    ->orWhereJsonContains('departure->iata', $search)
+                    ->orWhereJsonContains('arrival->iata', $search);
+            });
+        }
+
+        // Filter by status
+        if (!empty($filters['status'])) {
+            $query->where('status', $filters['status']);
+        }
+
+        // Filter by flight regime
+        if (!empty($filters['flight_regime'])) {
+            $query->where('flight_regime', $filters['flight_regime']);
+        }
+
+        // Filter by flight type
+        if (!empty($filters['flight_type'])) {
+            $query->where('flight_type', $filters['flight_type']);
+        }
+
+        // Filter by operator
+        if (!empty($filters['operator_id'])) {
+            $query->where('operator_id', $filters['operator_id']);
+        }
+
+        // Filter by aircraft
+        if (!empty($filters['aircraft_id'])) {
+            $query->where('aircraft_id', $filters['aircraft_id']);
+        }
+
+        // Filter by departure date range
+        if (!empty($filters['departure_date_from'])) {
+            $query->whereDate('departure_time', '>=', Carbon::parse($filters['departure_date_from']));
+        }
+        if (!empty($filters['departure_date_to'])) {
+            $query->whereDate('departure_time', '<=', Carbon::parse($filters['departure_date_to']));
+        }
+
+        // Apply sorting
+        $sort = $filters['sort'] ?? 'departure_time:desc';
+        [$column, $direction] = explode(':', $sort);
+        $query->orderBy($column, strtoupper($direction));
+
+        // Paginate
+        $perPage = $filters['per_page'] ?? 15;
+        return $query->paginate($perPage);
+    }
 }

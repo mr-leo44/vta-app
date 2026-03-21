@@ -41,5 +41,9 @@ class AircraftTypeService implements AircraftTypeServiceInterface
     {
         $this->repository->delete($aircraftType);
     }
-}
 
+    public function filter(array $filters): LengthAwarePaginator
+    {
+        return $this->repository->filter($filters);
+    }
+}

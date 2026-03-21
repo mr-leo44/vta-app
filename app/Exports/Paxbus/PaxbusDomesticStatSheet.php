@@ -59,13 +59,15 @@ class PaxbusDomesticStatSheet implements FromArray, ShouldAutoSize, WithEvents, 
         $data = [];
 
         // TITRES
-        foreach ([
-            ['SERVICE VTA'],
-            ['BUREAU PAX BUS'],
-            ["RVA AERO/N'DJILI"],
-            [''],
-            [$this->title],
-        ] as $line) {
+        foreach (
+            [
+                ['SERVICE VTA'],
+                ['BUREAU PAX BUS'],
+                ["RVA AERO/N'DJILI"],
+                [''],
+                [$this->title],
+            ] as $line
+        ) {
             $data[] = array_pad($line, $cols, '');
         }
 
@@ -332,7 +334,7 @@ class PaxbusDomesticStatSheet implements FromArray, ShouldAutoSize, WithEvents, 
                         }
 
                         if ($cells) {
-                            $s->setCellValue("{$colLetter}{$totalsRow}", '=SUM('.implode(',', $cells).')');
+                            $s->setCellValue("{$colLetter}{$totalsRow}", '=SUM(' . implode(',', $cells) . ')');
                         }
 
                         $s->getStyle("{$colLetter}{$totalsRow}")
@@ -340,7 +342,6 @@ class PaxbusDomesticStatSheet implements FromArray, ShouldAutoSize, WithEvents, 
                         $s->getStyle("{$colLetter}{$totalsRow}")->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
                         $s->getStyle("{$colLetter}{$totalsRow}")
                             ->getNumberFormat()->setFormatCode('#,##0');
-
                     }
                 }
 

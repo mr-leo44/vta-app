@@ -7,7 +7,7 @@ use App\Exports\Paxbus\PaxbusInternationalStatSheet;
 use App\Exports\Paxbus\PaxbusDomesticStatSheet;
 use App\Exports\Paxbus\PaxbusSyntheticStatSheet;
 
-class PaxbusReportExport implements WithMultipleSheets
+class PaxbusMonthlyReportExport implements WithMultipleSheets
 {
     protected $month;
     protected $year;
@@ -26,7 +26,6 @@ class PaxbusReportExport implements WithMultipleSheets
     {
         $year = $this->year;
         $selectedMonth = $this->getMonth($this->month);
-
         return [
             new PaxbusInternationalStatSheet(
                 "STATISTIQUE INT",
@@ -55,13 +54,13 @@ class PaxbusReportExport implements WithMultipleSheets
 
         $voyelles = ['A', 'E', 'I', 'O', 'U', 'Y'];
         $prefixe = "";
-        foreach($voyelles as $voyelle) {
+        foreach ($voyelles as $voyelle) {
             if (str_starts_with($mois, $voyelle)) {
                 $prefixe = "D'";
                 break;
             }
         }
-        if($prefixe == "") {
+        if ($prefixe == "") {
             $prefixe = "DE ";
         }
 

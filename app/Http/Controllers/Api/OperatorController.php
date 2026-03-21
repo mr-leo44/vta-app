@@ -10,6 +10,7 @@ use App\Http\Resources\OperatorResource;
 use App\Services\OperatorServiceInterface;
 use App\Http\Requests\StoreOperatorRequest;
 use App\Http\Requests\UpdateOperatorRequest;
+use App\Http\Requests\FilterOperatorRequest;
 
 /**
  * @group Operators
@@ -87,5 +88,23 @@ class OperatorController extends Controller
         return $operators
             ? OperatorResource::collection($operators)
             : ApiResponse::error('Exploitant non trouvé', 404);
+    }
+
+    /**
+     * Filter operators with advanced criteria.
+     *
+     * @queryParam search string The search term (name/IATA/ICAO). Example: Air
+     * @queryParam country string The country to filter by. Example: DRC
+     * @queryParam flight_type string The flight type (regular/non_regular). Example: regular
+     * @queryParam flight_regime string The regime (domestic/international). Example: domestic
+     * @queryParam flight_nature string The nature (commercial/non_commercial). Example: commercial
+     * @queryParam sort string The sort order. Example: name:asc
+     * @queryParam per_page integer Items per page. Example: 20
+     */
+    public function filter(FilterOperatorRequest $request)
+    {
+        $filters = $request->getFilters();
+        $operators = $this->service->filter($filters);
+        return OperatorResource::collection($operators);
     }
 }

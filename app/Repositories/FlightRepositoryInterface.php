@@ -13,4 +13,5 @@ interface FlightRepositoryInterface
     public function find(int $id): ?Flight;
     public function update(Flight $flight, array $data): Flight;
     public function delete(Flight $flight): void;
+    public function filter(array $filters);
 }

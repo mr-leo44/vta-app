@@ -2,29 +2,36 @@
 
 namespace App\Http\Controllers\Api;
 
+use Carbon\Carbon;
+use App\Models\Flight;
+use App\Models\Operator;
 use App\Enums\FlightNatureEnum;
 use App\Enums\FlightRegimeEnum;
 use App\Enums\FlightStatusEnum;
 use App\Enums\FlightTypeEnum;
-use App\Exports\Traffic\TraficReportAnnualExport;
-use App\Exports\Traffic\TraficReportExport;
-use App\Http\Controllers\Controller;
-use App\Models\Flight;
-use App\Models\Operator;
-use Carbon\Carbon;
+use App\Helpers\ApiResponse;
 use Illuminate\Support\Collection;
+use App\Http\Controllers\Controller;
 use Maatwebsite\Excel\Facades\Excel;
+use App\Exports\Traffic\TraficReportExport;
+use App\Exports\Traffic\TraficReportAnnualExport;
 
 class TraficReportController extends Controller
 {
     /**
      * Génère le rapport mensuel par regime avec datasets (un par métrique)
      */
-    public function monthlyReport(string|int $month, string|int $year, string $regime): array
+    public function monthlyReport(string|int $month, string|int $year, string $regime): array|\Illuminate\Http\JsonResponse
     {
         // On force la conversion en entier pour la logique interne (getDaysOfMonth, etc.)
         $month = (int) $month;
         $year = (int) $year;
+
+        // Vérifier s'il y a des données de vols pour ce mois
+        if (!$this->hasFlightData($month, $year, $regime)) {
+            return ApiResponse::error('Pas de données disponibles', 400);
+        }
+
         $days = $this->getDaysOfMonth($month, $year);
 
         // Pour PAX : exclure les opérateurs cargo-only
@@ -75,9 +82,15 @@ class TraficReportController extends Controller
     /**
      * Génère le rapport annuel avec 5 datasets (un par métrique)
      */
-    public function yearlyReport(string|int $year, string $regime): array
+    public function yearlyReport(string|int $year, string $regime): array|\Illuminate\Http\JsonResponse
     {
         $year = (int) $year;
+
+        // Vérifier s'il y a des données de vols pour cette année
+        if (!$this->hasFlightData(null, $year, $regime)) {
+            return ApiResponse::error('Pas de données disponibles', 400);
+        }
+
         $months = range(1, 12);
 
         // Pour PAX : exclure les opérateurs cargo-only
@@ -137,7 +150,7 @@ class TraficReportController extends Controller
         Collection $nonCommercialOps
     ): array {
         return collect($days)->map(function ($day) use ($regime, $metric, $commercialOps, $nonCommercialOps) {
-            $row = ['date' => Carbon::parse($day)->format('d/m/Y')];
+            $row = ['DATE' => Carbon::parse($day)->format('d/m/Y')];
 
             // Commercial operators
             foreach ($commercialOps as $op) {
@@ -199,7 +212,7 @@ class TraficReportController extends Controller
         Collection $nonCommercialOps
     ): array {
         return collect($months)->map(function ($month) use ($year, $regime, $metric, $commercialOps, $nonCommercialOps) {
-            $row = ['date' => Carbon::create($year, $month, 1)->format('m-Y')];
+            $row = ['MOIS' => Carbon::create($year, $month, 1)->format('m-Y')];
 
             // Commercial operators
             foreach ($commercialOps as $op) {
@@ -432,7 +445,19 @@ class TraficReportController extends Controller
         $monthInt = (int) $month;
         $yearInt = (int) $year;
         $internationalData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($internationalData instanceof \Illuminate\Http\JsonResponse) {
+            return $internationalData;
+        }
+        
         $domesticData = $this->monthlyReport($monthInt, $yearInt, FlightRegimeEnum::DOMESTIC->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($domesticData instanceof \Illuminate\Http\JsonResponse) {
+            return $domesticData;
+        }
+        
         $monthName = $this->getMonthName($monthInt);
 
         $fileName = sprintf(
@@ -460,7 +485,18 @@ class TraficReportController extends Controller
         $yearInt = (int) $year;
 
         $internationalData = $this->yearlyReport($yearInt, FlightRegimeEnum::INTERNATIONAL->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($internationalData instanceof \Illuminate\Http\JsonResponse) {
+            return $internationalData;
+        }
+        
         $domesticData = $this->yearlyReport($yearInt, FlightRegimeEnum::DOMESTIC->value);
+        
+        // Vérifier si une erreur a été retournée
+        if ($domesticData instanceof \Illuminate\Http\JsonResponse) {
+            return $domesticData;
+        }
 
         $fileName = sprintf(
             'TRAFIC_ANNUEL_%s.xlsx',
@@ -476,6 +512,28 @@ class TraficReportController extends Controller
             $fileName
         );
    }
+
+    /**
+     * Vérifie s'il y a des données de vols pour une année ou un mois spécifique
+     */
+    private function hasFlightData(?int $month, int $year, string $regime): bool
+    {
+        $query = Flight::where('flight_regime', $regime);
+
+        if ($month !== null) {
+            // Vérification pour un mois spécifique
+            $startDate = Carbon::createFromDate($year, $month, 1)->startOfMonth();
+            $endDate = Carbon::createFromDate($year, $month, 1)->endOfMonth();
+            $query->whereBetween('departure_time', [$startDate, $endDate]);
+        } else {
+            // Vérification pour une année complète
+            $startDate = Carbon::createFromDate($year, 1, 1)->startOfYear();
+            $endDate = Carbon::createFromDate($year, 12, 31)->endOfYear();
+            $query->whereBetween('departure_time', [$startDate, $endDate]);
+        }
+
+        return $query->exists();
+    }
 
     /**
      * Récupère le nom du mois

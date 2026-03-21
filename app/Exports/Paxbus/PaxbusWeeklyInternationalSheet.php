@@ -38,14 +38,16 @@ class PaxbusWeeklyInternationalSheet implements FromArray, ShouldAutoSize, WithE
         $arrayData = [];
 
         // TITRES
-        foreach ([
-            ['SERVICE VTA'],
-            ['BUREAU PAX BUS'],
-            ["RVA AERO/N'DJILI"],
-            [''],
-            [$this->title],
-            [$this->subTitle],
-        ] as $line) {
+        foreach (
+            [
+                ['SERVICE VTA'],
+                ['BUREAU PAX BUS'],
+                ["RVA AERO/N'DJILI"],
+                [''],
+                [$this->title],
+                [$this->subTitle],
+            ] as $line
+        ) {
             $arrayData[] = array_pad($line, $cols, '');
         }
 
@@ -54,10 +56,10 @@ class PaxbusWeeklyInternationalSheet implements FromArray, ShouldAutoSize, WithE
 
         // DONNÉES
         $totalPax = 0;
-        
+
         foreach ($this->data['data'] as $date => $operators) {
             $isFirstOperatorForDate = true;
-            
+
             foreach ($operators as $operatorSigle => $flights) {
                 foreach ($flights as $flight) {
                     $row = [
@@ -66,7 +68,7 @@ class PaxbusWeeklyInternationalSheet implements FromArray, ShouldAutoSize, WithE
                         $flight['immatriculation'],
                         (int)$flight['pax_bus'],
                     ];
-                    
+
                     $arrayData[] = $row;
                     $totalPax += (int)$flight['pax_bus'];
                     $isFirstOperatorForDate = false;

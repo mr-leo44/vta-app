@@ -29,10 +29,10 @@ class PaxbusWeeklyReportExport implements WithMultipleSheets
     public function sheets(): array
     {
         $title = "RAPPORT HEBDOMADAIRE VERIFICATION PAX BUS ET EVALUATION EN DOLLARS {$this->month} {$this->year}";
-        
+
         $startDate = $this->internationalData['startDate'] ?? '';
         $endDate = $this->internationalData['endDate'] ?? '';
-        
+
         $subTitleInter = "AMERICAINS/INTERNATIONAL DU {$startDate} AU {$endDate}";
         $subTitleDom = "NATIONAL DU {$startDate} AU {$endDate}";
 

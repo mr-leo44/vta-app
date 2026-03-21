@@ -13,7 +13,9 @@ use App\Http\Controllers\Api\OperatorController;
 use App\Http\Controllers\Api\PaxbusReportController;
 use App\Http\Controllers\Api\ReportController;
 use App\Http\Controllers\Api\TraficReportController;
+use App\Http\Controllers\Api\AuditController;
 use App\Http\Controllers\Api\UserController;
+use App\Http\Controllers\Api\UserPermissionController;
 use Illuminate\Support\Facades\Route;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -37,13 +39,32 @@ Route::middleware('auth:sanctum')->group(function () {
     // ─────────────────────────────────────────────────────────────────────
 
     Route::prefix('users')->group(function () {
-        Route::get('/',    [UserController::class, 'index']);   // user.viewAny
-        Route::post('/',   [UserController::class, 'store']);   // user.create
-        Route::put('/{user}',    [UserController::class, 'update']);   // user.update
-        Route::delete('/{user}', [UserController::class, 'destroy']);  // user.delete
+        Route::get('/',    [UserController::class, 'index']);
+        Route::post('/',   [UserController::class, 'store']);
+        Route::put('/{user}',    [UserController::class, 'update']);
+        Route::delete('/{user}', [UserController::class, 'destroy']);
 
         // Assigne une fonction (sync rôle Spatie automatique)
-        Route::post('/{user}/assign-function', [UserController::class, 'assignFunction']); // user.assignFunction
+        Route::post('/{user}/assign-function', [UserController::class, 'assignFunction']);
+
+        // ── Overrides de permissions ──────────────────────────────────────
+        Route::prefix('/{user}/permissions')->group(function () {
+            Route::get('/',              [UserPermissionController::class, 'index']);
+            Route::post('/grant',        [UserPermissionController::class, 'grant']);
+            Route::post('/revoke',       [UserPermissionController::class, 'revoke']);
+            Route::delete('/{permission}', [UserPermissionController::class, 'destroy'])
+                 ->where('permission', '.+'); // la permission contient un point (ex: flight.create)
+        });
+    });
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Audit — admin uniquement
+    // ─────────────────────────────────────────────────────────────────────
+
+    Route::prefix('audit')->middleware('permission:user.viewAny')->group(function () {
+        Route::get('/',        [AuditController::class, 'index']);
+        Route::get('/stats',   [AuditController::class, 'stats']);
+        Route::get('/actors',  [AuditController::class, 'actors']);
     });
 
     // ─────────────────────────────────────────────────────────────────────

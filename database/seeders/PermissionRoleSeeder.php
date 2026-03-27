@@ -2,10 +2,12 @@
 
 namespace Database\Seeders;
 
+use App\Enums\Permission as EnumsPermission;
+use App\Enums\UserRole;
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
-use App\Models\User;
+use Spatie\Permission\PermissionRegistrar;
 
 class PermissionRoleSeeder extends Seeder
 {
@@ -14,30 +16,44 @@ class PermissionRoleSeeder extends Seeder
      */
     public function run(): void
     {
-        // define some example permissions
-        $permissions = [
-            'view reports',
-            'export reports',
-            'manage users',
-        ];
+        app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
-        foreach ($permissions as $perm) {
-            Permission::firstOrCreate(['name' => $perm]);
+        foreach (EnumsPermission::cases() as $perm) {
+            Permission::firstOrCreate([
+                'name' => $perm->value,
+                'guard_name' => 'web'
+            ]);
         }
 
-        // define roles and attach permissions
-        $admin = Role::firstOrCreate(['name' => 'admin']);
-        $admin-> givePermissionTo(Permission::all());
+        // define roles  for Admin and attach permissions
+        $admin = Role::firstOrCreate([
+            'name' => UserRole::ADMIN->value,
+            'guard_name' => 'web'
+        ]);
+        $admin->syncPermissions(EnumsPermission::all());
 
-        $manager = Role::firstOrCreate(['name' => 'manager']);
-        $manager->givePermissionTo(['view reports', 'export reports']);
+        // define roles  for Manager and attach permissions
+        $manager = Role::firstOrCreate([
+            'name' => UserRole::MANAGER->value,
+            'guard_name' => 'web'
+        ]);
+        $manager->syncPermissions(EnumsPermission::forManager());
 
-        $user = Role::firstOrCreate(['name' => 'user']);
+        // define roles  for Agent and attach permissions
+        $agent = Role::firstOrCreate([
+            'name' => UserRole::AGENT->value,
+            'guard_name' => 'web'
+        ]);
+        $agent->syncPermissions(EnumsPermission::forAgent());
 
-        // Optionally assign admin role to the first user
-        $first = User::find(1);
-        if ($first) {
-            $first->assignRole('admin');
-        }
+        $this->command->info('✅ Permissions et rôles synchronisés.');
+        $this->command->table(
+            ['Rôle', 'Nb permissions'],
+            [
+                [UserRole::ADMIN->label(),   count(EnumsPermission::all())],
+                [UserRole::MANAGER->label(), count(EnumsPermission::forManager())],
+                [UserRole::AGENT->label(),   count(EnumsPermission::forAgent())],
+            ]
+        );
     }
 }

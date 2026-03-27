@@ -2,27 +2,17 @@
 
 namespace App\Providers;
 
-use Dedoc\Scramble\Scramble;
-use App\Services\AuthService;
-use App\Services\AircraftService;
-use App\Services\OperatorService;
-use App\Services\AircraftTypeService;
-use App\Repositories\FlightRepository;
-use App\Services\AuthServiceInterface;
-use Illuminate\Support\ServiceProvider;
+use App\Models\Aircraft;
+use App\Models\AircraftType;
+use App\Models\Flight;
+use App\Models\Operator;
+use App\Models\User;
+use App\Observers\AuditObserver;
+use App\Policies\FlightPolicy;
+use App\Policies\UserPolicy;
 use App\Repositories\AircraftRepository;
-use App\Repositories\OperatorRepository;
-use App\Services\AircraftServiceInterface;
-use App\Services\OperatorServiceInterface;
-use App\Repositories\AircraftTypeRepository;
-use App\Repositories\EloquentUserRepository;
-use App\Repositories\UserRepositoryInterface;
-use Dedoc\Scramble\Support\Generator\OpenApi;
-use App\Services\AircraftTypeServiceInterface;
-use App\Repositories\FlightRepositoryInterface;
 use App\Repositories\AircraftRepositoryInterface;
-use App\Repositories\OperatorRepositoryInterface;
-use App\Repositories\FlightJustificationRepository;
+use App\Repositories\AircraftTypeRepository;
 use App\Repositories\IdefFretRepository;
 use App\Repositories\IdefFretRepositoryInterface;
 use App\Repositories\MonthlyRateRepository;
@@ -31,10 +21,29 @@ use App\Services\IdefFretService;
 use App\Services\IdefFretServiceInterface;
 use App\Services\MonthlyRateService;
 use App\Services\MonthlyRateServiceInterface;
-use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use App\Repositories\AircraftTypeRepositoryInterface;
-use Dedoc\Scramble\Support\Generator\SecurityRequirement;
+use App\Repositories\EloquentUserRepository;
+use App\Repositories\FlightJustificationRepository;
 use App\Repositories\FlightJustificationRepositoryInterface;
+use App\Repositories\FlightRepository;
+use App\Repositories\FlightRepositoryInterface;
+use App\Repositories\OperatorRepository;
+use App\Repositories\OperatorRepositoryInterface;
+use App\Repositories\UserRepositoryInterface;
+use App\Services\AircraftService;
+use App\Services\AircraftServiceInterface;
+use App\Services\AircraftTypeService;
+use App\Services\AircraftTypeServiceInterface;
+use App\Services\AuthService;
+use App\Services\AuthServiceInterface;
+use App\Services\OperatorService;
+use App\Services\OperatorServiceInterface;
+use Dedoc\Scramble\Scramble;
+use Dedoc\Scramble\Support\Generator\OpenApi;
+use Dedoc\Scramble\Support\Generator\SecurityRequirement;
+use Dedoc\Scramble\Support\Generator\SecurityScheme;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -65,12 +74,34 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Scramble::configure()
-        ->withDocumentTransformers(function (OpenApi $openApi) {
-            $openApi->components->securitySchemes['bearer'] = SecurityScheme::http('bearer');
+            ->withDocumentTransformers(function (OpenApi $openApi) {
+                $openApi->components->securitySchemes['bearer'] = SecurityScheme::http('bearer');
 
-            $openApi->security[] = new SecurityRequirement([
-                'bearer' => [],
-            ]);
+                $openApi->security[] = new SecurityRequirement([
+                    'bearer' => [],
+                ]);
+            });
+
+        // ── Enregistrement des Policies ───────────────────────────────────
+        Gate::policy(Flight::class, FlightPolicy::class);
+        Gate::policy(User::class,   UserPolicy::class);
+
+        // ── Super-admin Gate (court-circuit) ──────────────────────────────
+        // Un utilisateur ayant le rôle "admin" passe tous les Gate checks
+        // SAUF les checks explicitement refusés par une Policy (ex : auto-delete).
+        // Ce Gate::before() est évalué AVANT toute Policy.
+        Gate::before(function (User $user, string $ability): ?bool {
+            if ($user->hasRole('admin')) {
+                return true; // null = continuer vers la Policy ; true = bypass
+            }
+            return null;
         });
+
+        // ── Observers d'audit ────────────────────────────────────────────
+        Flight::observe(AuditObserver::class);
+        Aircraft::observe(AuditObserver::class);
+        AircraftType::observe(AuditObserver::class);
+        Operator::observe(AuditObserver::class);
+        User::observe(AuditObserver::class);
     }
 }

@@ -35,6 +35,14 @@ class UserController extends Controller
         return UserResource::collection($users);
     }
 
+    public function all(Request $request): AnonymousResourceCollection
+    {
+        $users = User::with('currentFunction')
+            ->latest()->get();
+
+        return UserResource::collection($users);
+    }
+
     /** POST /api/users — crée un utilisateur */
     public function store(StoreUserRequest $request): JsonResponse
     {

@@ -31,17 +31,15 @@ Route::post('/logout', [AuthController::class, 'logout'])->middleware('auth:sanc
 
 Route::middleware('auth:sanctum')->group(function () {
 
-    // ── Profil utilisateur connecté (permissions incluses → store Pinia) ──
-    Route::get('/user', [UserController::class, 'me']);
-
     // ─────────────────────────────────────────────────────────────────────
     // Gestion des utilisateurs — admin uniquement
     // ─────────────────────────────────────────────────────────────────────
 
     Route::prefix('users')->group(function () {
-        Route::get('/',    [UserController::class, 'index']);
-        Route::post('/',   [UserController::class, 'store']);
-        Route::put('/{user}',    [UserController::class, 'update']);
+        Route::get('/all', [UserController::class, 'all']);
+        Route::get('/', [UserController::class, 'index']);
+        Route::post('/', [UserController::class, 'store']);
+        Route::put('/{user}', [UserController::class, 'update']);
         Route::delete('/{user}', [UserController::class, 'destroy']);
 
         // Assigne une fonction (sync rôle Spatie automatique)
@@ -49,13 +47,17 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // ── Overrides de permissions ──────────────────────────────────────
         Route::prefix('/{user}/permissions')->group(function () {
-            Route::get('/',              [UserPermissionController::class, 'index']);
-            Route::post('/grant',        [UserPermissionController::class, 'grant']);
-            Route::post('/revoke',       [UserPermissionController::class, 'revoke']);
+            Route::get('/', [UserPermissionController::class, 'index']);
+            Route::post('/grant', [UserPermissionController::class, 'grant']);
+            Route::post('/revoke', [UserPermissionController::class, 'revoke']);
             Route::delete('/{permission}', [UserPermissionController::class, 'destroy'])
-                 ->where('permission', '.+'); // la permission contient un point (ex: flight.create)
+                ->where('permission', '.+'); // la permission contient un point (ex: flight.create)
         });
-    });
+    })->middleware('permission:user.viewAny');
+
+    // ── Profil utilisateur connecté (permissions incluses → store Pinia) ──
+    Route::get('/user', [UserController::class, 'me']);
+
 
     // ─────────────────────────────────────────────────────────────────────
     // Audit — admin uniquement
@@ -79,7 +81,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         // Validation (flight.validate — admin uniquement via FlightPolicy)
         Route::post('/{flight}/validate', [FlightController::class, 'validateFlight'])
-             ->name('flights.validate');
+            ->name('flights.validate');
     });
 
     Route::apiResource('flights', FlightController::class);
@@ -142,71 +144,89 @@ Route::middleware('auth:sanctum')->group(function () {
     // ─────────────────────────────────────────────────────────────────────
 
     Route::post('/imports', [ImportController::class, 'store'])
-         ->middleware('permission:files.import');
+        ->middleware('permission:files.import');
 
     // ─────────────────────────────────────────────────────────────────────
     // Rapports — lecture (report.view) et export (report.export)
     // ─────────────────────────────────────────────────────────────────────
 
-    Route::middleware('permission:report.view')->group(function () {
-        // Trafic
+    Route::middleware(['permission:report.view', 'permission:report.export'])->group(function () {
+        // Trafic Report exports and views
         Route::prefix('trafic-report')->group(function () {
+            Route::get('/yearly/export/{year?}',              [TraficReportController::class, 'exportYearlyReport']);
+            Route::get('/monthly/export/{month?}/{year?}',    [TraficReportController::class, 'monthlyExportReport']);
             Route::get('/yearly/{year?}/{regime?}',        [TraficReportController::class, 'yearlyReport']);
             Route::get('/monthly/{month?}/{year?}/{regime?}', [TraficReportController::class, 'monthlyReport']);
         });
 
-        // PAX Bus
+        // PAX Bus Report exports and views
         Route::prefix('paxbus-report')->group(function () {
-            Route::get('/yearly/{year}/{regime}',              [PaxbusReportController::class, 'yearlyReport']);
-            Route::get('/monthly/{month}/{year}/{regime}',     [PaxbusReportController::class, 'monthlyReport']);
-            Route::get('/weekly/{quinzaine}/{month}/{year}/{regime}', [PaxbusReportController::class, 'weeklyReport']);
+            Route::get('/yearly/export/{year}', [
+                PaxbusReportController::class,
+                'yearlyExportReport',
+            ]);
+            Route::get('/monthly/export/{month}/{year}', [
+                PaxbusReportController::class,
+                'monthlyExportReport',
+            ]);
+            Route::get('/weekly/export/{quinzaine}/{month}/{year}', [
+                PaxbusReportController::class,
+                'weeklyExportReport',
+            ]);
+            Route::get('/yearly/{year}/{regime}', [
+                PaxbusReportController::class,
+                'yearlyReport',
+            ]);
+            Route::get('/monthly/{month}/{year}/{regime}', [
+                PaxbusReportController::class,
+                'monthlyReport',
+            ]);
+            Route::get('/weekly/{quinzaine}/{month}/{year}/{regime}', [
+                PaxbusReportController::class,
+                'weeklyReport',
+            ]);
         });
 
-        // IDEF
+        // IDEF Report exports and views
         Route::prefix('idef-report')->group(function () {
-            Route::get('/yearly/{year?}/{regime?}',           [IdefReportController::class, 'yearlyReport']);
-            Route::get('/monthly/{month?}/{year?}/{regime?}', [IdefReportController::class, 'monthlyReport']);
+            Route::get('/yearly/export/{year?}', [
+                IdefReportController::class,
+                'yearlyExportReport',
+            ]);
+            Route::get('/monthly/export/{month?}/{year?}', [
+                IdefReportController::class,
+                'monthlyExportReport',
+            ]);
+            Route::get('/yearly/{year?}/{regime?}', [
+                IdefReportController::class,
+                'yearlyReport',
+            ]);
+            Route::get('/monthly/{month?}/{year?}/{regime?}', [
+                IdefReportController::class,
+                'monthlyReport',
+            ]);
         });
 
-        // Rapport unifié
         Route::prefix('report')->group(function () {
-            Route::get('/monthly/{month}/{year}',             [ReportController::class, 'monthly']);
-            Route::get('/yearly/{year}',                      [ReportController::class, 'yearly']);
-            Route::get('/monthly/{month}/{year}/by-operators',[ReportController::class, 'monthlyByOperators']);
-            Route::get('/yearly/{year}/by-operators',         [ReportController::class, 'yearlyByOperators']);
+            // Aggregated by regime
+            Route::get('/monthly/{month}/{year}',        [ReportController::class, 'monthly']);
+            Route::get('/yearly/{year}',                 [ReportController::class, 'yearly']);
+
+            // Broken down by operator
+            Route::get('/monthly/{month}/{year}/by-operators', [ReportController::class, 'monthlyByOperators']);
+            Route::get('/yearly/{year}/by-operators',          [ReportController::class, 'yearlyByOperators']);
+
+            // Exports (stubs registered now, implementations added in next commit)
+            Route::get('/monthly/{month}/{year}/export',              [ReportController::class, 'monthlyExport']);
+            Route::get('/yearly/{year}/export',                       [ReportController::class, 'yearlyExport']);
+            Route::get('/monthly/{month}/{year}/by-operators/export', [ReportController::class, 'monthlyByOperatorsExport']);
+            Route::get('/yearly/{year}/by-operators/export',          [ReportController::class, 'yearlyByOperatorsExport']);
+            Route::get('/monthly/{month}/{year}/pax-by-operators/export', [ReportController::class, 'monthlyPAXByOperatorsExport']);
+            Route::get('/yearly/{year}/pax-by-operators/export',          [ReportController::class, 'yearlyPAXByOperatorsExport']);
         });
     });
 
-    Route::middleware('permission:report.export')->group(function () {
-        // Trafic exports
-        Route::prefix('trafic-report')->group(function () {
-            Route::get('/yearly/export/{year?}',              [TraficReportController::class, 'exportYearlyReport']);
-            Route::get('/monthly/export/{month?}/{year?}',    [TraficReportController::class, 'monthlyExportReport']);
-        });
 
-        // PAX Bus exports
-        Route::prefix('paxbus-report')->group(function () {
-            Route::get('/yearly/export/{year}',               [PaxbusReportController::class, 'yearlyExportReport']);
-            Route::get('/monthly/export/{month}/{year}',      [PaxbusReportController::class, 'monthlyExportReport']);
-            Route::get('/weekly/export/{quinzaine}/{month}/{year}', [PaxbusReportController::class, 'weeklyExportReport']);
-        });
-
-        // IDEF exports
-        Route::prefix('idef-report')->group(function () {
-            Route::get('/yearly/export/{year?}',              [IdefReportController::class, 'yearlyExportReport']);
-            Route::get('/monthly/export/{month?}/{year?}',    [IdefReportController::class, 'monthlyExportReport']);
-        });
-
-        // Rapport unifié exports
-        Route::prefix('report')->group(function () {
-            Route::get('/monthly/{month}/{year}/export',                       [ReportController::class, 'monthlyExport']);
-            Route::get('/yearly/{year}/export',                                [ReportController::class, 'yearlyExport']);
-            Route::get('/monthly/{month}/{year}/by-operators/export',          [ReportController::class, 'monthlyByOperatorsExport']);
-            Route::get('/yearly/{year}/by-operators/export',                   [ReportController::class, 'yearlyByOperatorsExport']);
-            Route::get('/monthly/{month}/{year}/pax-by-operators/export',      [ReportController::class, 'monthlyPAXByOperatorsExport']);
-            Route::get('/yearly/{year}/pax-by-operators/export',               [ReportController::class, 'yearlyPAXByOperatorsExport']);
-        });
-    });
 
     // ─────────────────────────────────────────────────────────────────────
     // IDEF Frets — admin / manager

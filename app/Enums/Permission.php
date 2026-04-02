@@ -89,7 +89,7 @@ enum Permission: string
         ];
     }
 
-    /** Permissions Agent : encodage vols (ses propres uniquement). */
+    /** Permissions Agent : encodage vols (ses propres uniquement). enregistrement des operateurs, avions et ses types */
     public static function forAgent(): array
     {
         return [
@@ -98,6 +98,10 @@ enum Permission: string
             self::FLIGHT_CREATE->value,
             self::FLIGHT_UPDATE_OWN->value,
             self::FLIGHT_DELETE_OWN->value,
+
+            self::OPERATOR_CREATE->value,
+            self::AIRCRAFT_CREATE->value,
+            self::AIRCRAFT_TYPE_CREATE->value,
 
             self::PERMISSION_REQUEST_CREATE->value,
         ];

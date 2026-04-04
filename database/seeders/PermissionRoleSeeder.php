@@ -39,6 +39,13 @@ class PermissionRoleSeeder extends Seeder
         ]);
         $manager->syncPermissions(EnumsPermission::forManager());
 
+        // define roles  for Permanent Agents and attach permissions
+        $permanent_agent = Role::firstOrCreate([
+            'name' => UserRole::PERMANENT->value,
+            'guard_name' => 'web'
+        ]);
+        $permanent_agent->syncPermissions(EnumsPermission::forPermanent());
+
         // define roles  for Agent and attach permissions
         $agent = Role::firstOrCreate([
             'name' => UserRole::AGENT->value,
@@ -52,6 +59,7 @@ class PermissionRoleSeeder extends Seeder
             [
                 [UserRole::ADMIN->label(),   count(EnumsPermission::all())],
                 [UserRole::MANAGER->label(), count(EnumsPermission::forManager())],
+                [UserRole::PERMANENT->label(),   count(EnumsPermission::forPermanent())],
                 [UserRole::AGENT->label(),   count(EnumsPermission::forAgent())],
             ]
         );

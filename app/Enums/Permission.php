@@ -89,7 +89,18 @@ enum Permission: string
         ];
     }
 
-    /** Permissions Agent : encodage vols (ses propres uniquement). enregistrement des operateurs, avions et ses types */
+    /** Permissions Agent : encodage vols (ses propres uniquement). */
+    public static function forPermanent(): array
+    {
+        return [
+            self::FLIGHT_VIEW_ANY->value,
+            self::FLIGHT_VIEW->value,
+            self::FLIGHT_UPDATE_ANY->value,
+
+            self::PERMISSION_REQUEST_CREATE->value,
+        ];
+    }
+
     public static function forAgent(): array
     {
         return [
@@ -99,10 +110,15 @@ enum Permission: string
             self::FLIGHT_UPDATE_OWN->value,
             self::FLIGHT_DELETE_OWN->value,
 
-            self::OPERATOR_CREATE->value,
             self::AIRCRAFT_CREATE->value,
-            self::AIRCRAFT_TYPE_CREATE->value,
+            self::AIRCRAFT_UPDATE->value,
 
+            self::AIRCRAFT_TYPE_CREATE->value,
+            self::AIRCRAFT_TYPE_UPDATE->value,
+
+            self::OPERATOR_CREATE->value,
+            self::OPERATOR_UPDATE->value,
+            
             self::PERMISSION_REQUEST_CREATE->value,
         ];
     }

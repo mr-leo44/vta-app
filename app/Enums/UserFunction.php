@@ -74,10 +74,11 @@ enum UserFunction: string
             self::CQ,                        // ← Québec → Manager
             self::CQA                        => UserRole::MANAGER, // ← Québec Alpha → Manager
 
-            self::VTA,
+            self::VTA_PAXBUS,
             self::VTA_TRAFIC,
-            self::VTA_IDEF,
-            self::VTA_PAXBUS                 => UserRole::AGENT,
+            self::VTA_IDEF                   => UserRole::PERMANENT,
+
+            self::VTA                        => UserRole::AGENT,
         };
     }
 

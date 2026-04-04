@@ -21,8 +21,9 @@ class DatabaseSeeder extends Seeder
             User::factory()->create([
                 'name' => 'Administrateur',
                 'username' => 'admin',
-                'password' => Hash::make('admin@1234!'),
+                'password' => Hash::make('Admin@1234!'),
             ])->assignRole('Admin');
         }
+        $this->command->info('✅ Administrateur créé.');
     }
 }

@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\UserPermissionOverride;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Spatie\Permission\PermissionRegistrar;
 
@@ -64,15 +65,21 @@ class UserPermissionController extends Controller
             'reason'     => ['nullable', 'string', 'max:500'],
         ]);
 
+
         // updateOrCreate — si un revoke existait, on le remplace par un grant
         $override = UserPermissionOverride::updateOrCreate(
             ['user_id' => $user->id, 'permission' => $data['permission']],
             [
                 'type'       => 'grant',
-                'granted_by' => auth()->id(),
+                'granted_by' => Auth::id(),
                 'reason'     => $data['reason'] ?? null,
             ]
         );
+
+        // S'assurer que la permission est également attribuée via Spatie
+        // (persistée dans model_has_permissions) pour compatibilité avec
+        // d'autres usages de la librairie.
+        $user->givePermissionTo($data['permission']);
 
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
@@ -107,14 +114,21 @@ class UserPermissionController extends Controller
             'reason'     => ['nullable', 'string', 'max:500'],
         ]);
 
-        UserPermissionOverride::updateOrCreate(
+
+        $override = UserPermissionOverride::updateOrCreate(
             ['user_id' => $user->id, 'permission' => $data['permission']],
             [
                 'type'       => 'revoke',
-                'granted_by' => auth()->id(),
+                'granted_by' => Auth::id(),
                 'reason'     => $data['reason'] ?? null,
             ]
         );
+
+        // Si l'utilisateur avait reçu la permission directement via Spatie,
+        // la retirer pour garder la source de vérité cohérente.
+        if ($user->hasDirectPermission($data['permission'])) {
+            $user->revokePermissionTo($data['permission']);
+        }
 
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 
@@ -140,11 +154,20 @@ class UserPermissionController extends Controller
     {
         $this->authorize('assignFunction', $user);
 
-        $deleted = UserPermissionOverride::where('user_id', $user->id)
+        $override = UserPermissionOverride::where('user_id', $user->id)
             ->where('permission', $permission)
-            ->delete();
+            ->first();
 
-        abort_unless($deleted, 404, 'Override introuvable.');
+        abort_unless($override, 404, 'Override introuvable.');
+
+        // Si l'override supprimé était un grant, retirer aussi la permission
+        // directe stockée par Spatie pour éviter d'avoir une permission
+        // persistée sans override correspondant.
+        if ($override->type === 'grant' && $user->hasDirectPermission($permission)) {
+            $user->revokePermissionTo($permission);
+        }
+
+        $override->delete();
 
         app()[PermissionRegistrar::class]->forgetCachedPermissions();
 

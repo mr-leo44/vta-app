@@ -53,6 +53,21 @@ class User extends Authenticatable
         return $this->hasMany(UserPermissionOverride::class);
     }
 
+    /**
+     * Indique si un override existe pour l'utilisateur.
+     * Si $type est fourni, filtre sur 'grant' ou 'revoke'.
+     */
+    public function hasPermissionOverride(string $permission, ?string $type = null): bool
+    {
+        $query = $this->permissionOverrides()->where('permission', $permission);
+
+        if ($type) {
+            $query->where('type', $type);
+        }
+
+        return $query->exists();
+    }
+
     // ─────────────────────────────────────────────────────────────────────
     // Helpers — fonction & rôle
     // ─────────────────────────────────────────────────────────────────────

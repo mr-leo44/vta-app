@@ -53,7 +53,7 @@ Route::middleware('auth:sanctum')->group(function () {
             Route::delete('/{permission}', [UserPermissionController::class, 'destroy'])
                 ->where('permission', '.+'); // la permission contient un point (ex: flight.create)
         });
-    })->middleware('permission:user.viewAny');
+    })->middleware('permission:user.view');
 
     // ── Profil utilisateur connecté (permissions incluses → store Pinia) ──
     Route::get('/user', [UserController::class, 'me']);
@@ -63,7 +63,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Audit — admin uniquement
     // ─────────────────────────────────────────────────────────────────────
 
-    Route::prefix('audit')->middleware('permission:user.viewAny')->group(function () {
+    Route::prefix('audit')->middleware('permission:user.view')->group(function () {
         Route::get('/',        [AuditController::class, 'index']);
         Route::get('/stats',   [AuditController::class, 'stats']);
         Route::get('/actors',  [AuditController::class, 'actors']);
@@ -74,7 +74,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // ─────────────────────────────────────────────────────────────────────
 
     Route::prefix('flights')->group(function () {
-        // Lecture (flight.viewAny)
+        // Lecture (flight.view)
         Route::get('/filter', [FlightController::class, 'filter'])->name('flights.filter');
         Route::get('/all',    [FlightController::class, 'all'])->name('flights.all');
         Route::get('/daily',  [FlightController::class, 'flightsByDate'])->name('flights.daily');
@@ -85,7 +85,7 @@ Route::middleware('auth:sanctum')->group(function () {
     });
 
     Route::apiResource('flights', FlightController::class);
-    // index   → FlightPolicy::viewAny  (flight.viewAny)
+    // index   → FlightPolicy::view  (flight.view)
     // show    → FlightPolicy::view     (flight.view)
     // store   → FlightPolicy::create   (flight.create)
     // update  → FlightPolicy::update   (flight.updateOwn | flight.updateAny)
@@ -95,14 +95,14 @@ Route::middleware('auth:sanctum')->group(function () {
     // Opérateurs
     // ─────────────────────────────────────────────────────────────────────
 
-    Route::middleware('permission:operator.viewAny')->group(function () {
+    Route::middleware('permission:operator.view')->group(function () {
         Route::get('operators/filter', [OperatorController::class, 'filter'])->name('operators.filter');
         Route::get('operators/search', [OperatorController::class, 'search'])->name('operators.search');
         Route::get('operators/all',    [OperatorController::class, 'all'])->name('operators.all');
     });
 
     Route::apiResource('operators', OperatorController::class);
-    // index   → permission:operator.viewAny (via middleware Spatie sur la resource)
+    // index   → permission:operator.view (via middleware Spatie sur la resource)
     // show    → permission:operator.view
     // store   → permission:operator.create
     // update  → permission:operator.update
@@ -112,7 +112,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Types d'avion
     // ─────────────────────────────────────────────────────────────────────
 
-    Route::middleware('permission:aircraftType.viewAny')->group(function () {
+    Route::middleware('permission:aircraftType.view')->group(function () {
         Route::get('aircraft-types/filter',       [AircraftTypeController::class, 'filter'])->name('aircraft-types.filter');
         Route::get('aircraft-types/find/{query}', [AircraftTypeController::class, 'find'])->name('aircraft-types.find');
         Route::get('aircraft-types/all',          [AircraftTypeController::class, 'all'])->name('aircraft-types.all');
@@ -124,7 +124,7 @@ Route::middleware('auth:sanctum')->group(function () {
     // Avions
     // ─────────────────────────────────────────────────────────────────────
 
-    Route::middleware('permission:aircraft.viewAny')->group(function () {
+    Route::middleware('permission:aircraft.view')->group(function () {
         Route::get('aircrafts/filter', [AircraftController::class, 'filter'])->name('aircrafts.filter');
         Route::get('aircrafts/search', [AircraftController::class, 'search'])->name('aircrafts.search');
         Route::get('aircrafts/all',    [AircraftController::class, 'all'])->name('aircrafts.all');

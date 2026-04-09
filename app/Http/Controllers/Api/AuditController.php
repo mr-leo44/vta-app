@@ -79,6 +79,7 @@ class AuditController extends Controller
                 'event_label'    => $log->eventLabel(),
                 'model'          => $log->auditableLabel(),
                 'model_id'       => $log->auditable_id,
+                'model_name'     => User::find($log->auditable_id, 'name'),
                 'actor'          => $log->actor ? [
                     'id'       => $log->actor->id,
                     'name'     => $log->actor->name,

@@ -17,19 +17,14 @@ use App\Models\User;
  */
 class FlightPolicy
 {
-    public function viewAny(User $user): bool
+    public function view(User $user): bool
     {
-        return $user->can('flight.viewAny');
-    }
-
-    public function view(User $user, Flight $flight): bool
-    {
-        return $user->can('flight.view');
+        return $user->can('flight.view') || $user->hasPermissionOverride('flight.view');
     }
 
     public function create(User $user): bool
     {
-        return $user->can('flight.create');
+        return $user->can('flight.create') || $user->hasPermissionOverride('flight.create');
     }
 
     /**
@@ -40,11 +35,14 @@ class FlightPolicy
      */
     public function update(User $user, Flight $flight): bool
     {
-        if ($user->can('flight.updateAny')) {
+        $hasAny = $user->can('flight.updateAny') || $user->hasPermissionOverride('flight.updateAny');
+        $hasOwn = $user->can('flight.updateOwn') || $user->hasPermissionOverride('flight.updateOwn');
+
+        if ($hasAny) {
             return true;
         }
 
-        if ($user->can('flight.updateOwn')) {
+        if ($hasOwn) {
             return (int) $flight->created_by === $user->id
                 && ! $flight->is_validated;
         }
@@ -54,11 +52,14 @@ class FlightPolicy
 
     public function delete(User $user, Flight $flight): bool
     {
-        if ($user->can('flight.deleteAny')) {
+        $hasAny = $user->can('flight.deleteAny') || $user->hasPermissionOverride('flight.deleteAny');
+        $hasOwn = $user->can('flight.deleteOwn') || $user->hasPermissionOverride('flight.deleteOwn');
+
+        if ($hasAny) {
             return true;
         }
 
-        if ($user->can('flight.deleteOwn')) {
+        if ($hasOwn) {
             return (int) $flight->created_by === $user->id
                 && ! $flight->is_validated;
         }
@@ -72,11 +73,11 @@ class FlightPolicy
      */
     public function validate(User $user, Flight $flight): bool
     {
-        return $user->can('flight.validate') && ! $flight->is_validated;
+        return ($user->can('flight.validate') && ! $flight->is_validated) || $user->hasPermissionOverride('flight.validate');
     }
 
     public function export(User $user): bool
     {
-        return $user->can('flight.export');
+        return $user->can('flight.export') || $user->hasPermissionOverride('flight.export');
     }
 }

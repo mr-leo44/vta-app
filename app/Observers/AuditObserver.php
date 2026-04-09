@@ -30,12 +30,15 @@ class AuditObserver
 
     public function created(Model $model): void
     {
-        $this->record('created', $model, newValues: $model->getAttributes());
+        $newValues = $model->getAttributes();
+        if(isset($newValues['password'])) unset($newValues['password']);
+        $this->record('created', $model, newValues: $newValues);
     }
 
     public function updated(Model $model): void
     {
         $changes = $model->getChanges();
+        if (isset($changes['password'])) unset($changes['password']);
         unset($changes['updated_at'], $changes['updated_by']);
 
         if (empty($changes)) {

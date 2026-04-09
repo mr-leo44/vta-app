@@ -39,7 +39,7 @@ class AuditController extends Controller
      */
     public function index(Request $request): JsonResponse
     {
-        $this->authorize('user.viewAny'); // réservé admin
+        $this->authorize('user.create'); // réservé admin
 
         $request->validate([
             'event'    => ['nullable', 'string', 'in:' . implode(',', self::ALLOWED_EVENTS)],
@@ -105,7 +105,7 @@ class AuditController extends Controller
      */
     public function stats(): JsonResponse
     {
-        $this->authorize('user.viewAny');
+        $this->authorize('user.view');
 
         $today     = now()->toDateString();
         $thisWeek  = now()->startOfWeek()->toDateString();
@@ -145,7 +145,7 @@ class AuditController extends Controller
      */
     public function actors(): JsonResponse
     {
-        $this->authorize('user.viewAny');
+        $this->authorize('user.view');
 
         $actors = User::whereIn('id',
             AuditLog::whereNotNull('actor_id')->distinct()->pluck('actor_id')

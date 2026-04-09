@@ -24,11 +24,11 @@ class UserPermissionController extends Controller
 {
     /**
      * Liste les overrides actifs et les permissions effectives d'un utilisateur.
-     * Admin uniquement (user.viewAny).
+     * Admin uniquement (user.view).
      */
     public function index(User $user): JsonResponse
     {
-        $this->authorize('viewAny', User::class);
+        $this->authorize('view', User::class);
 
         $user->load(['permissionOverrides.grantedBy:id,name', 'currentFunction']);
 

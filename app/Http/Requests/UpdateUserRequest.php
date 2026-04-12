@@ -4,6 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\Rules\Password;
 
 class UpdateUserRequest extends FormRequest
 {
@@ -23,7 +24,7 @@ class UpdateUserRequest extends FormRequest
                 Rule::unique('users', 'username')->ignore($this->route('user')),
                 'regex:/^[a-zA-Z0-9._-]+$/',
             ],
-            'password' => ['sometimes', 'string', 'min:8', 'max:100', 'confirmed'],
+            'password' => ['sometimes', 'string', 'max:100', 'confirmed', Password::defaults()],
         ];
     }
 }

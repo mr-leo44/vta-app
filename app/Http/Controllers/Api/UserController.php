@@ -8,10 +8,13 @@ use App\Http\Requests\AssignFunctionRequest;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
+use App\Models\AuditLog;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Validation\Rules\Password;
 
 /**
  * UserController
@@ -99,5 +102,76 @@ class UserController extends Controller
         $user = $request->user()->load('currentFunction');
 
         return response()->json($user->accessSummary());
+    }
+
+    /**
+     * PUT /api/profile/update — met à jour le profil de l'utilisateur connecté.
+     *
+     * Permet de changer name et username.
+     */
+    public function updateProfile(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'name'     => 'sometimes|string|max:255',
+            'username' => 'sometimes|string|unique:users,username,' . $user->id,
+        ]);
+
+        if ($validated) {
+            $user->update($validated);
+
+            AuditLog::record(
+                event:     'profile_updated',
+                subject:   $user,
+                newValues: $validated,
+            );
+        }
+
+        return response()->json([
+            'message' => 'Profil mis à jour.',
+            'user'    => new UserResource($user),
+        ]);
+    }
+
+    /**
+     * POST /api/profile/change-password — change le mot de passe de l'utilisateur connecté.
+     *
+     * Nécessite : current_password, password, password_confirmation
+     */
+    public function changePassword(Request $request): JsonResponse
+    {
+        $user = $request->user();
+
+        $validated = $request->validate([
+            'current_password'      => ['required', 'string'],
+            'password'              => ['required', 'string', 'max:100', 'confirmed', Password::defaults()],
+            'password_confirmation' => ['required'],
+        ]);
+
+        // Vérifier le mot de passe actuel
+        if (!Hash::check($validated['current_password'], $user->password)) {
+            return response()->json([
+                'message' => 'Le mot de passe actuel est incorrect.',
+            ], 422);
+        }
+
+        // Mettre à jour le mot de passe
+        $user->update([
+            'password' => $validated['password'],
+        ]);
+
+        AuditLog::record(
+            event:   'password_changed',
+            subject: $user,
+            newValues: [],
+        );
+
+        // Révoquer tous les tokens existants pour forcer une reconnexion
+        $user->tokens()->delete();
+
+        return response()->json([
+            'message' => 'Mot de passe changé. Reconnecter-vous.',
+        ]);
     }
 }

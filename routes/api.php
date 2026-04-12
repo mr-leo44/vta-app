@@ -58,6 +58,12 @@ Route::middleware('auth:sanctum')->group(function () {
     // ── Profil utilisateur connecté (permissions incluses → store Pinia) ──
     Route::get('/user', [UserController::class, 'me']);
 
+    // ── Gestion du profil et sécurité (connecté uniquement) ──
+    Route::prefix('profile')->group(function () {
+        Route::put('/update', [UserController::class, 'updateProfile']);
+        Route::post('/change-password', [UserController::class, 'changePassword']);
+    });
+
 
     // ─────────────────────────────────────────────────────────────────────
     // Audit — admin uniquement

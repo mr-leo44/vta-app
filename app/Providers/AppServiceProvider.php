@@ -44,6 +44,7 @@ use Dedoc\Scramble\Support\Generator\SecurityRequirement;
 use Dedoc\Scramble\Support\Generator\SecurityScheme;
 use Illuminate\Support\Facades\Gate;
 use Illuminate\Support\ServiceProvider;
+use Illuminate\Validation\Rules\Password;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -73,6 +74,15 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // ── Règle de mot de passe par défaut ─────────────────────────────
+        // min 8 caractères · au moins 1 majuscule · 1 chiffre · 1 symbole
+        Password::defaults(function () {
+            return Password::min(8)
+                ->mixedCase()   // au moins une majuscule ET une minuscule
+                ->numbers()     // au moins un chiffre
+                ->symbols();    // au moins un caractère spécial
+        });
+
         Scramble::configure()
             ->withDocumentTransformers(function (OpenApi $openApi) {
                 $openApi->components->securitySchemes['bearer'] = SecurityScheme::http('bearer');

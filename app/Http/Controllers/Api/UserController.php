@@ -5,7 +5,9 @@ namespace App\Http\Controllers\Api;
 use App\Enums\UserFunction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AssignFunctionRequest;
+use App\Http\Requests\ChangePasswordRequest;
 use App\Http\Requests\StoreUserRequest;
+use App\Http\Requests\UpdateProfileRequest;
 use App\Http\Requests\UpdateUserRequest;
 use App\Http\Resources\UserResource;
 use App\Models\AuditLog;
@@ -14,7 +16,6 @@ use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Resources\Json\AnonymousResourceCollection;
 use Illuminate\Support\Facades\Hash;
-use Illuminate\Validation\Rules\Password;
 
 /**
  * UserController
@@ -109,24 +110,18 @@ class UserController extends Controller
      *
      * Permet de changer name et username.
      */
-    public function updateProfile(Request $request): JsonResponse
+    public function updateProfile(UpdateProfileRequest $request): JsonResponse
     {
         $user = $request->user();
+        $validated = $request->validated();
 
-        $validated = $request->validate([
-            'name'     => 'sometimes|string|max:255',
-            'username' => 'sometimes|string|unique:users,username,' . $user->id,
-        ]);
+        $user->update($validated);
 
-        if ($validated) {
-            $user->update($validated);
-
-            AuditLog::record(
-                event:     'profile_updated',
-                subject:   $user,
-                newValues: $validated,
-            );
-        }
+        AuditLog::record(
+            event:     'profile_updated',
+            subject:   $user,
+            newValues: $validated,
+        );
 
         return response()->json([
             'message' => 'Profil mis à jour.',
@@ -139,15 +134,10 @@ class UserController extends Controller
      *
      * Nécessite : current_password, password, password_confirmation
      */
-    public function changePassword(Request $request): JsonResponse
+    public function changePassword(ChangePasswordRequest $request): JsonResponse
     {
         $user = $request->user();
-
-        $validated = $request->validate([
-            'current_password'      => ['required', 'string'],
-            'password'              => ['required', 'string', 'max:100', 'confirmed', Password::defaults()],
-            'password_confirmation' => ['required'],
-        ]);
+        $validated = $request->validated();
 
         // Vérifier le mot de passe actuel
         if (!Hash::check($validated['current_password'], $user->password)) {

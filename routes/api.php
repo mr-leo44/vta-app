@@ -64,8 +64,10 @@ Route::middleware('auth:sanctum')->group(function () {
 
     // ── Gestion du profil et sécurité (connecté uniquement) ──
     Route::prefix('profile')->group(function () {
-        Route::put('/update', [UserController::class, 'updateProfile']);
-        Route::post('/change-password', [UserController::class, 'changePassword']);
+        Route::put('/update', [UserController::class, 'updateProfile'])
+            ->middleware('permission:user.updateProfile');
+        Route::post('/change-password', [UserController::class, 'changePassword'])
+            ->middleware('permission:user.changePassword');
     });
 
 

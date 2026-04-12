@@ -55,4 +55,13 @@ class UserPolicy
     {
         return $user->can('user.resetPasswordRequest') || $user->hasPermissionOverride('user.resetPasswordRequest');
     }
-}
+
+    public function updateProfile(User $user): bool
+    {
+        return $user->can('user.updateProfile') || $user->hasPermissionOverride('user.updateProfile');
+    }
+
+    public function changePassword(User $user): bool
+    {
+        return $user->can('user.changePassword') || $user->hasPermissionOverride('user.changePassword');
+    }

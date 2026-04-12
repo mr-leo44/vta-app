@@ -113,6 +113,8 @@ class UserController extends Controller
      */
     public function updateProfile(UpdateProfileRequest $request): JsonResponse
     {
+        $this->authorize('updateProfile');
+
         $user = $request->user();
         $validated = $request->validated();
 
@@ -137,6 +139,8 @@ class UserController extends Controller
      */
     public function changePassword(ChangePasswordRequest $request): JsonResponse
     {
+        $this->authorize('changePassword');
+
         $user = $request->user();
         $validated = $request->validated();
 

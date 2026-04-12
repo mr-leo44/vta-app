@@ -21,6 +21,8 @@ class Aircraft extends Model
         'in_activity',
         'aircraft_type_id',
         'operator_id',
+        'created_by',
+        'updated_by',
     ];
 
     public function type(): BelongsTo

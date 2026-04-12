@@ -19,6 +19,8 @@ class Operator extends Model
         'icao_code',
         'country',
         'flight_type',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [

@@ -26,6 +26,8 @@ class Flight extends Model
         'departure_time',
         'arrival_time',
         'remarks',
+        'created_by',
+        'updated_by',
     ];
 
     protected $casts = [

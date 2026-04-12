@@ -11,7 +11,7 @@ class AircraftType extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name', 'sigle', 'default_pmad'];
+    protected $fillable = ['name', 'sigle', 'default_pmad', 'created_by', 'updated_by'];
 
     public function aircrafts(): HasMany
     {

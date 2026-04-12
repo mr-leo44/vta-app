@@ -2,6 +2,7 @@
 
 namespace App\Jobs;
 
+use App\Helpers\AuditContext;
 use App\Imports\AircraftsImport;
 use App\Imports\AircraftTypesImport;
 use App\Imports\OperatorsImport;
@@ -23,14 +24,16 @@ class ProcessExcelImport implements ShouldQueue
     protected string $filePath;
     protected string $delimiter;
     protected string $encoding;
+    protected ?int $userId;
 
     /**
      * Create a new job instance.
      */
-    public function __construct(string $importType, string $filePath, string $delimiter = ';', string $encoding = 'UTF-8')
+    public function __construct(string $importType, string $filePath, ?int $userId = null, string $delimiter = ';', string $encoding = 'UTF-8')
     {
         $this->importType = $importType;
         $this->filePath   = $filePath;
+        $this->userId     = $userId;
         $this->delimiter  = $delimiter;
         $this->encoding   = $encoding;
     }
@@ -54,10 +57,13 @@ class ProcessExcelImport implements ShouldQueue
         ini_set('memory_limit', '512M');
 
         try {
-            // Désactiver les observers pendant l'import
-            // pour éviter des milliers de logs individuels
-            Model::withoutEvents(function () use ($import) {
-                Excel::import($import, $this->filePath);
+            // Exécuter l'import avec contexte utilisateur
+            AuditContext::withUserId($this->userId, function () use ($import) {
+                // Désactiver les observers pendant l'import
+                // pour éviter des milliers de logs individuels
+                Model::withoutEvents(function () use ($import) {
+                    Excel::import($import, $this->filePath);
+                });
             });
 
             // Créer 1 log RÉSUMÉ à la fin
@@ -65,7 +71,7 @@ class ProcessExcelImport implements ShouldQueue
                 'event'          => 'import_completed',
                 'auditable_type' => 'App\\Imports\\' . ucfirst($this->importType),
                 'auditable_id'   => 0, // pas d'ID spécifique
-                'actor_id'       => null, // job lancé sans user
+                'actor_id'       => $this->userId,
                 'actor_ip'       => null,
                 'actor_agent'    => null,
                 'old_values'     => null,
@@ -82,6 +88,7 @@ class ProcessExcelImport implements ShouldQueue
                 'created' => $import->created,
                 'updated' => $import->updated,
                 'failed'  => count($import->errors),
+                'user_id' => $this->userId,
             ]);
         } catch (\Exception $e) {
             // Log l'erreur d'import
@@ -89,7 +96,7 @@ class ProcessExcelImport implements ShouldQueue
                 'event'          => 'import_failed',
                 'auditable_type' => 'App\\Imports\\' . ucfirst($this->importType),
                 'auditable_id'   => 0,
-                'actor_id'       => null,
+                'actor_id'       => $this->userId,
                 'actor_ip'       => null,
                 'actor_agent'    => null,
                 'old_values'     => null,
@@ -99,7 +106,9 @@ class ProcessExcelImport implements ShouldQueue
                 ],
             ]);
 
-            Log::error("Import {$this->importType} failed: " . $e->getMessage());
+            Log::error("Import {$this->importType} failed: " . $e->getMessage(), [
+                'user_id' => $this->userId,
+            ]);
             throw $e;
         } finally {
             // Nettoyer le fichier temporaire

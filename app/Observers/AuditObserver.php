@@ -2,29 +2,45 @@
 
 namespace App\Observers;
 
+use App\Helpers\AuditContext;
 use App\Models\AuditLog;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
 
 /**
- * AuditObserver — version base de données.
+ * AuditObserver — remplit created_by/updated_by automatiquement.
  *
- * Insère dans audit_logs (plus de Log::channel fichier).
- * Remplit created_by / updated_by avant persistence si la colonne existe.
+ * - Si Auth::check() → utilise Auth::id()
+ * - Sinon, essaie model->getAttribute('created_by') ou model->getAttribute('updated_by')
+ * - Insère aussi audit_logs pour chaque create/update/delete
  */
 class AuditObserver
 {
+    /**
+     * Hook avant la création — remplit created_by si absent.
+     */
     public function creating(Model $model): void
     {
-        if (Auth::check() && in_array('created_by', $model->getFillable(), true)) {
-            $model->created_by = Auth::id();
+        if (in_array('created_by', $model->getFillable(), true)) {
+            // Remplit seulement si vide
+            if (!$model->getAttribute('created_by')) {
+                // Essayer Auth d'abord, puis AuditContext (pour les jobs)
+                $userId = Auth::id() ?? AuditContext::getUserId();
+                $model->created_by = $userId;
+            }
         }
     }
 
+    /**
+     * Hook avant la modif — remplit updated_by si absent.
+     */
     public function updating(Model $model): void
     {
-        if (Auth::check() && in_array('updated_by', $model->getFillable(), true)) {
-            $model->updated_by = Auth::id();
+        if (in_array('updated_by', $model->getFillable(), true)) {
+            if (!$model->getAttribute('updated_by')) {
+                $userId = Auth::id() ?? AuditContext::getUserId();
+                $model->updated_by = $userId;
+            }
         }
     }
 
@@ -72,13 +88,16 @@ class AuditObserver
             return;
         }
 
+        // Récupérer l'user_id : Auth, puis AuditContext, puis null
+        $actorId = Auth::id() ?? AuditContext::getUserId();
+
         AuditLog::create([
             'event'          => $event,
             'auditable_type' => get_class($model),
             'auditable_id'   => $model->getKey(),
-            'actor_id'       => Auth::id(),
-            'actor_ip'       => request()->ip(),
-            'actor_agent'    => substr((string) request()->userAgent(), 0, 255),
+            'actor_id'       => $actorId,
+            'actor_ip'       => request()?->ip(),
+            'actor_agent'    => request() ? substr((string) request()->userAgent(), 0, 255) : null,
             'old_values'     => $oldValues ?: null,
             'new_values'     => $newValues ?: null,
         ]);

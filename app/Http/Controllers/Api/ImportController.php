@@ -45,10 +45,11 @@ class ImportController extends Controller
         $filePath = $request->file('file')->store('imports', 'local');
         $fullPath = storage_path("app/{$filePath}");
 
-        // Dispatcher le job de traitement
+        // Dispatcher le job de traitement avec l'ID de l'utilisateur connecté
         ProcessExcelImport::dispatch(
             importType: $request->input('type'),
             filePath:   $fullPath,
+            userId:     $request->user()->id,
             delimiter:  $request->input('delimiter', ';'),
             encoding:   $request->input('encoding', 'UTF-8')
         );

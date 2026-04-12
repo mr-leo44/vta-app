@@ -45,6 +45,10 @@ Route::middleware('auth:sanctum')->group(function () {
         // Assigne une fonction (sync rôle Spatie automatique)
         Route::post('/{user}/assign-function', [UserController::class, 'assignFunction']);
 
+        // Réinitialise le mot de passe (admin uniquement - user.resetPassword)
+        Route::post('/{user}/reset-password', [UserController::class, 'resetPassword'])
+            ->middleware('permission:user.resetPassword');
+
         // ── Overrides de permissions ──────────────────────────────────────
         Route::prefix('/{user}/permissions')->group(function () {
             Route::get('/', [UserPermissionController::class, 'index']);

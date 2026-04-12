@@ -51,7 +51,7 @@ class UserPolicy
         return $user->can('user.resetPassword') || $user->hasPermissionOverride('user.resetPassword');
     }
 
-    public function resetPaswwordRequest(User $user, User $target): bool
+    public function resetPasswordRequest(User $user, User $target): bool
     {
         return $user->can('user.resetPasswordRequest') || $user->hasPermissionOverride('user.resetPasswordRequest');
     }

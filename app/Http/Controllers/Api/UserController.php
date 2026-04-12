@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Enums\UserFunction;
+use App\Helpers\PasswordGenerator;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\AssignFunctionRequest;
 use App\Http\Requests\ChangePasswordRequest;
@@ -162,6 +163,50 @@ class UserController extends Controller
 
         return response()->json([
             'message' => 'Mot de passe changé. Reconnecter-vous.',
+        ]);
+    }
+
+    /**
+     * POST /api/users/{user}/reset-password — réinitialise le mot de passe d'un utilisateur.
+     *
+     * Admin uniquement (user.resetPassword).
+     * Génère un password aléatoire sûr et le retourne UNE SEULE FOIS.
+     * Le nouveau password ne sera plus accessible après cette réponse.
+     */
+    public function resetPassword(User $user): JsonResponse
+    {
+        $this->authorize('resetPassword', $user);
+
+        // Générer un password sûr
+        $newPassword = PasswordGenerator::generate(16);
+
+        // Mettre à jour l'utilisateur
+        $user->update([
+            'password' => $newPassword,
+        ]);
+
+        // Révoquer tous les tokens de cet utilisateur
+        $user->tokens()->delete();
+
+        // Enregistrer l'action dans l'audit
+        AuditLog::record(
+            event:     'password_reset',
+            subject:   $user,
+            newValues: [
+                'reset_by' => auth()->user()->name,
+            ],
+        );
+
+        // IMPORTANT : Retourner le password UNE SEULE FOIS
+        // Une fois cette réponse fermée, le password n'est plus accessible nulle part
+        return response()->json([
+            'message'     => 'Mot de passe réinitialisé avec succès.',
+            'password'    => $newPassword,
+            'warning'     => 'Ce mot de passe ne sera visible qu\'une seule fois. Copiez-le maintenant.',
+            'user'        => [
+                'id'   => $user->id,
+                'name' => $user->name,
+            ],
         ]);
     }
 }

@@ -3,12 +3,9 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
-use App\Imports\AircraftsImport;
-use App\Imports\AircraftTypesImport;
-use App\Imports\OperatorsImport;
+use App\Jobs\ProcessExcelImport;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
-use Maatwebsite\Excel\Facades\Excel;
 
 class ImportController extends Controller
 {
@@ -44,25 +41,21 @@ class ImportController extends Controller
             'has_header' => 'nullable|in:0,1',
         ]);
 
-        $delimiter = $request->input('delimiter', ';');
-        $encoding  = $request->input('encoding', 'UTF-8');
+        // Sauvegarder le fichier temporaire
+        $filePath = $request->file('file')->store('imports', 'local');
+        $fullPath = storage_path("app/{$filePath}");
 
-        // Instancier la bonne classe d'import avec les options CSV
-        $import = match ($request->input('type')) {
-            'operators'      => new OperatorsImport($delimiter, $encoding),
-            'aircrafts'      => new AircraftsImport($delimiter, $encoding),
-            'aircraft-types' => new AircraftTypesImport($delimiter, $encoding),
-        };
-
-        // Laravel Excel détecte automatiquement le format (xlsx/xls/csv)
-        // via l'extension du fichier uploadé.
-        Excel::import($import, $request->file('file'));
+        // Dispatcher le job de traitement
+        ProcessExcelImport::dispatch(
+            importType: $request->input('type'),
+            filePath:   $fullPath,
+            delimiter:  $request->input('delimiter', ';'),
+            encoding:   $request->input('encoding', 'UTF-8')
+        );
 
         return response()->json([
-            'created' => $import->created,
-            'updated' => $import->updated,
-            'failed'  => count($import->errors),
-            'errors'  => $import->errors,
-        ]);
+            'message' => 'Import lancé en arrière-plan. Vérifiez plus tard.',
+            'file'    => $filePath,
+        ], 202);
     }
 }

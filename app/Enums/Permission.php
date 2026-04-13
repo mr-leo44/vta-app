@@ -37,15 +37,15 @@ enum Permission: string
     case REPORT_EXPORT         = 'report.export';
 
         // ── Utilisateurs ──────────────────────────────────────────────────────
-    case USER_VIEW                  = 'user.view';
-    case USER_CREATE                = 'user.create';
-    case USER_UPDATE                = 'user.update';
-    case USER_DELETE                = 'user.delete';
-    case USER_ASSIGN_FUNCTION       = 'user.assignFunction';
-    case USER_RESET_PASSWORD        = 'user.resetPassword';
-    case USER_RESET_PAWWORD_REQUEST = 'user.resetPasswordRequest';
-    case USER_UPDATE_PROFILE        = 'user.updateProfile';
-    case USER_CHANGE_PASSWORD       = 'user.changePassword';
+    case USER_VIEW                   = 'user.view';
+    case USER_CREATE                 = 'user.create';
+    case USER_UPDATE                 = 'user.update';
+    case USER_DELETE                 = 'user.delete';
+    case USER_ASSIGN_FUNCTION        = 'user.assignFunction';
+    case USER_RESET_PASSWORD         = 'user.resetPassword';
+    case USER_RESET_PASSWORD_REQUEST = 'user.resetPasswordRequest';
+    case USER_UPDATE_PROFILE         = 'user.updateProfile';
+    case USER_CHANGE_PASSWORD        = 'user.changePassword';
 
         // ── Permissions ────────────────────────────────────────────
     case PERMISSION_VIEW           = 'permission.view';
@@ -107,7 +107,7 @@ enum Permission: string
             self::REPORT_VIEW->value,
             self::REPORT_EXPORT->value,
 
-            self::USER_RESET_PAWWORD_REQUEST->value,
+            self::USER_RESET_PASSWORD_REQUEST->value,
             self::USER_UPDATE_PROFILE->value,
             self::USER_CHANGE_PASSWORD->value,
 
@@ -122,7 +122,7 @@ enum Permission: string
         return [
             self::FLIGHT_VIEW->value,
 
-            self::USER_RESET_PAWWORD_REQUEST->value,
+            self::USER_RESET_PASSWORD_REQUEST->value,
 
             self::PERMISSION_VIEW_OWN->value,
             self::PERMISSION_REQUEST_CREATE->value,
@@ -151,7 +151,7 @@ enum Permission: string
             self::OPERATOR_CREATE->value,
             self::OPERATOR_UPDATE->value,
 
-            self::USER_RESET_PAWWORD_REQUEST->value,
+            self::USER_RESET_PASSWORD_REQUEST->value,
             self::USER_UPDATE_PROFILE->value,
             self::USER_CHANGE_PASSWORD->value,
 

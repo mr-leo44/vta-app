@@ -65,3 +65,4 @@ class UserPolicy
     {
         return $user->can('user.changePassword') || $user->hasPermissionOverride('user.changePassword');
     }
+}

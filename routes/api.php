@@ -59,6 +59,32 @@ Route::middleware('auth:sanctum')->group(function () {
         });
     })->middleware('permission:user.view');
 
+    // ── Liste des permissions disponibles pour le front ──────────────────
+    Route::get('/permissions/list', [UserPermissionController::class, 'listPermissions'])
+        ->middleware('permission:user.view');
+
+    // ── Liste de toutes les demandes de permissions (overrides) ──────────
+    Route::get('/permission-requests', [UserPermissionController::class, 'listRequests'])
+        ->middleware('permission:user.view');
+
+    // ─────────────────────────────────────────────────────────────────────
+    // Demandes de réinitialisation de mot de passe
+    // ─────────────────────────────────────────────────────────────────────
+
+    // Utilisateur connecté : demander une réinitialisation
+    Route::post('/profile/request-password-reset', [UserController::class, 'requestPasswordReset'])
+        ->middleware('permission:user.resetPasswordRequest');
+
+    // Admin : lister, approuver ou rejeter les demandes
+    Route::prefix('password-reset-requests')->middleware('permission:user.resetPassword')->group(function () {
+        Route::get('/', [UserController::class, 'listPasswordResetRequests']);
+        Route::post('/{passwordRequest}/approve', [UserController::class, 'approvePasswordResetRequest']);
+        Route::post('/{passwordRequest}/reject', [UserController::class, 'rejectPasswordResetRequest']);
+    });
+
+    // Utilisateur : annuler sa propre demande
+    Route::delete('/password-reset-requests/{passwordRequest}/cancel', [UserController::class, 'cancelPasswordResetRequest']);
+
     // ── Profil utilisateur connecté (permissions incluses → store Pinia) ──
     Route::get('/user', [UserController::class, 'me']);
 

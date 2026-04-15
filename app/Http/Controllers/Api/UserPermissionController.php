@@ -176,4 +176,132 @@ class UserPermissionController extends Controller
             'effective_permissions' => $user->effectivePermissions(),
         ]);
     }
+
+    /**
+     * Liste toutes les demandes de permissions (overrides) de tous les utilisateurs.
+     * Admin uniquement (user.view).
+     *
+     * Retourne les grants et revokes avec infos utilisateur et administrateur.
+     */
+    public function listRequests(): JsonResponse
+    {
+        $this->authorize('view', User::class);
+
+        $overrides = UserPermissionOverride::with(['user:id,name', 'grantedBy:id,name'])
+            ->orderByDesc('created_at')
+            ->get()
+            ->map(fn ($override) => [
+                'id'         => $override->id,
+                'user'       => [
+                    'id'   => $override->user->id,
+                    'name' => $override->user->name,
+                ],
+                'permission'  => $override->permission,
+                'type'        => $override->type,
+                'reason'      => $override->reason,
+                'granted_by'  => $override->grantedBy?->name,
+                'created_at'  => $override->created_at->toIso8601String(),
+            ]);
+
+        return response()->json([
+            'requests' => $overrides,
+            'total'    => $overrides->count(),
+            'message'  => 'Liste de toutes les demandes de permissions.',
+        ]);
+    }
+
+    /**
+     * Liste TOUTES les permissions disponibles (avec descriptions).
+     * Admin uniquement (user.view).
+     *
+     * Utile pour afficher une liste de permissions à grant/revoke au front.
+     */
+    public function listPermissions(): JsonResponse
+    {
+        $this->authorize('view', User::class);
+
+        $permissionsByCategory = [
+            'Vols' => [
+                'flight.view'       => 'Voir les vols',
+                'flight.create'     => 'Créer des vols',
+                'flight.updateOwn'  => 'Modifier ses propres vols',
+                'flight.updateAny'  => 'Modifier tous les vols',
+                'flight.deleteOwn'  => 'Supprimer ses propres vols',
+                'flight.deleteAny'  => 'Supprimer tous les vols',
+                'flight.validate'   => 'Valider les vols',
+                'flight.export'     => 'Exporter les vols',
+            ],
+            'Avions' => [
+                'aircraft.view'     => 'Voir les avions',
+                'aircraft.create'   => 'Créer des avions',
+                'aircraft.update'   => 'Modifier les avions',
+                'aircraft.delete'   => 'Supprimer les avions',
+            ],
+            'Types d\'avion' => [
+                'aircraftType.view'   => 'Voir les types d\'avion',
+                'aircraftType.create' => 'Créer des types d\'avion',
+                'aircraftType.update' => 'Modifier les types d\'avion',
+                'aircraftType.delete' => 'Supprimer les types d\'avion',
+            ],
+            'Opérateurs' => [
+                'operator.view'     => 'Voir les opérateurs',
+                'operator.create'   => 'Créer des opérateurs',
+                'operator.update'   => 'Modifier les opérateurs',
+                'operator.delete'   => 'Supprimer les opérateurs',
+            ],
+            'Rapports' => [
+                'report.view'       => 'Voir les rapports',
+                'report.export'     => 'Exporter les rapports',
+            ],
+            'Utilisateurs' => [
+                'user.view'                  => 'Voir les utilisateurs',
+                'user.create'                => 'Créer des utilisateurs',
+                'user.update'                => 'Modifier les utilisateurs',
+                'user.delete'                => 'Supprimer les utilisateurs',
+                'user.assignFunction'        => 'Assigner une fonction',
+                'user.resetPassword'         => 'Réinitialiser le mot de passe',
+                'user.resetPasswordRequest'  => 'Demander une réinitialisation de mot de passe',
+                'user.updateProfile'         => 'Mettre à jour son profil',
+                'user.changePassword'        => 'Changer son mot de passe',
+            ],
+            'Permissions' => [
+                'permission.view'            => 'Voir les permissions',
+                'permission.viewOwn'         => 'Voir ses propres permissions',
+                'permissionRequest.create'   => 'Créer une demande de permission',
+                'permissionRequest.manage'   => 'Gérer les demandes de permissions',
+            ],
+            'Imports & Exports' => [
+                'files.import'      => 'Importer des fichiers',
+                'files.export'      => 'Exporter des fichiers',
+            ],
+            'Données de trafic' => [
+                'pax.update'        => 'Modifier les données PAX',
+                'freight.update'    => 'Modifier les données de fret',
+                'excedent.update'   => 'Modifier les données d\'excédent',
+            ],
+            'IDEF' => [
+                'gopass.update'     => 'Mettre à jour GOPASS',
+            ],
+            'PAX BUS' => [
+                'paxbus.update'     => 'Mettre à jour PAX BUS',
+            ],
+        ];
+
+        // Transformer en array simple avec catégories
+        $permissions = [];
+        foreach ($permissionsByCategory as $category => $perms) {
+            foreach ($perms as $permission => $description) {
+                $permissions[] = [
+                    'permission'  => $permission,
+                    'category'    => $category,
+                    'description' => $description,
+                ];
+            }
+        }
+
+        return response()->json([
+            'permissions' => $permissions,
+            'message'     => 'Liste complète des permissions disponibles.',
+        ]);
+    }
 }

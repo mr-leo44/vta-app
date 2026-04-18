@@ -46,11 +46,11 @@ return [
     | "expires_at" attribute, but first-party sessions are not affected.
     |
     | Default Laravel: 60 minutes
-    | VTA Configuration: 480 minutes (8 heures)
+    | VTA Configuration: 300 minutes (5 heures)
     |
     */
 
-    'expiration' => env('SANCTUM_EXPIRATION', 480),
+    'expiration' => env('SANCTUM_EXPIRATION', 300),
 
     /*
     |--------------------------------------------------------------------------
